@@ -40,7 +40,7 @@ module.exports = class IRRemoteDevice extends Homey.Device {
     const button = this.getButtons().find((item) => item.id === buttonId);
     if (!button) throw new Error('Button not found');
     if (!button.code) throw new Error('Button has no learned IR code');
-    await this.homey.app.sendIR(button.code, button.repetitions || 1);
+    await this.homey.app.sendIR(button.code, button.repetitions || 1, this);
   }
 
   getButtonCapabilityId(buttonId) {
