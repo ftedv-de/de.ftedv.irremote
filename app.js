@@ -58,25 +58,25 @@ module.exports = class IRRemoteApp extends Homey.App {
       opts: {
         repetitions,
         device,
+        payload,
       },
-      payload,
     };
 
     this.log(
-      `=== RF CMD DYNAMIC OVERRIDE PROBE: repetitions=${repetitions}, prontoWords=${payload.split(/\s+/).length} ===`,
+      `=== RF CMD OPTS.PAYLOAD PROBE: repetitions=${repetitions}, prontoWords=${payload.split(/\s+/).length} ===`,
     );
-    this.log('Manifest RUNTIME contains neutral fallback; top-level payload contains known working Samsung code');
+    this.log('Manifest RUNTIME contains neutral fallback; known working Samsung ProntoHex is supplied as opts.payload');
 
     try {
       const result = await client.emit('cmd', request);
       this.log(
-        'Dynamic override probe succeeded',
+        'opts.payload probe succeeded',
         typeof result === 'undefined' ? '<undefined>' : result,
       );
       return true;
     } catch (error) {
       const message = error && error.message ? error.message : String(error);
-      this.log(`Dynamic override probe rejected: ${message}`);
+      this.log(`opts.payload probe rejected: ${message}`);
       throw error;
     }
   }
