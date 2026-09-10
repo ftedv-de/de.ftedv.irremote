@@ -11,7 +11,7 @@
   "settings": {
     "title": "IR Remote workshop",
     "subtitle": "Manage buttons, learn codes through ESPHome and keep a portable backup.",
-    "global_subtitle": "Configure ESPHome for IR learning and export all remotes. IR commands are transmitted by Homey Pro.",
+    "global_subtitle": "Configure ESPHome for IR learning and export all remotes. Dynamic IR commands are sent through the Homey Bridge selected for the device.",
     "mqtt_title": "ESPHome MQTT connection",
     "username": "Username",
     "password": "Password",
@@ -19,7 +19,7 @@
     "saved": "Settings saved.",
     "debug_title": "Diagnostics",
     "debug_enable": "Enable debug logging",
-    "debug_hint": "Logs detailed MQTT and IR data such as request IDs, ProntoHex/raw codes and transmission details. Leave disabled for normal operation.",
+    "debug_hint": "Logs detailed MQTT and IR data such as request IDs, ProntoHex/raw codes, selected carrier codebook, quantization error and transmission details. Leave disabled for normal operation.",
     "ir_word_test_hint": "Developer test for the Homey IR format. Sends a 1024-word test frame through the Homey Bridge selected for the remote and uses the highest word index 1023. Debug logging must be enabled.",
     "ir_word_test_remote": "Remote used for Bridge routing",
     "ir_word_test_run": "Test IR word index 1023",
@@ -47,7 +47,7 @@
     "no_buttons": "This remote has no buttons yet.",
     "repetitions": "Repeats",
     "close": "Finish",
-    "transmitter_notice": "Commands are sent by the Homey Pro IR blaster. Selecting a Homey Bridge is not supported for dynamic ProntoHex codes."
+    "transmitter_notice": "Learned ProntoHex/raw codes are mapped into a static timing codebook. This lets Homey send them dynamically through the Homey Bridge selected for this remote."
   },
   "types": {
     "custom": "Custom",
