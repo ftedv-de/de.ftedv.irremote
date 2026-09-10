@@ -1,0 +1,12 @@
+{
+  "carrier": 38000,
+  "dutyCycle": 33,
+  "sof": [4707, 4523],
+  "words": [
+    [605, 552],
+    [605, 1683]
+  ],
+  "eof": [579, 10124],
+  "repetitions": 1,
+  "txOnly": true
+}
