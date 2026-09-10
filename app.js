@@ -4,6 +4,9 @@ const Homey = require('homey');
 const { randomUUID } = require('crypto');
 const MqttService = require('./lib/MqttService');
 
+const DYNAMIC_IR_SIGNAL_ID = 'dynamic_ir';
+const DYNAMIC_IR_COMMAND_ID = 'RUNTIME';
+
 module.exports = class IRRemoteApp extends Homey.App {
 
   /**
@@ -42,13 +45,34 @@ module.exports = class IRRemoteApp extends Homey.App {
     await this.mqtt.destroy();
   }
 
-  async sendIR(code, repetitions = 1) {
+  /**
+   * Send an arbitrary IR code through Homey's native RF manager.
+   *
+   * Passing the Homey Device is important: Homey uses that context to route
+   * the transmission through the antenna/satellite selected for that device.
+   *
+   * Homey's public Apps SDK currently only documents static ProntoHex commands.
+   * The runtime manifest update below is intentionally isolated here so it can
+   * be replaced easily if Homey exposes a native dynamic ProntoHex API later.
+   */
+  async sendIR(code, repetitions = 1, device) {
+    if (!device) throw new Error('A Homey device is required for IR satellite routing');
+
     const payload = code.format === 'pronto'
       ? code.code
       : this.rawToProntoHex(code.code, code.carrier || 38000);
-    await this.homey.api.post('/manager/rf/ir/prontohex', {
-      payload,
+
+    const signalManifest = Homey.manifest?.signals?.ir?.[DYNAMIC_IR_SIGNAL_ID];
+    if (!signalManifest || !signalManifest.cmds) {
+      throw new Error(`IR signal '${DYNAMIC_IR_SIGNAL_ID}' is missing from the app manifest`);
+    }
+
+    signalManifest.cmds[DYNAMIC_IR_COMMAND_ID] = payload;
+
+    const signal = this.homey.rf.getSignalInfrared(DYNAMIC_IR_SIGNAL_ID);
+    await signal.cmd(DYNAMIC_IR_COMMAND_ID, {
       repetitions,
+      device,
     });
   }
 
