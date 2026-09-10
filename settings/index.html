@@ -13,6 +13,7 @@
     .panel h2 { margin-top: 0; }
     .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
     .wide { grid-column: 1 / -1; }
+    .hint { color: var(--muted); margin: 6px 0 14px; }
     @media (max-width: 620px) { .grid { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -35,6 +36,17 @@
   </section>
 
   <section class="panel">
+    <h2 data-i18n="settings.debug_title"></h2>
+    <p class="hint" data-i18n="settings.debug_hint"></p>
+    <label class="homey-form-checkbox">
+      <input class="homey-form-checkbox-input" type="checkbox" id="debug-enabled">
+      <span class="homey-form-checkbox-checkmark"></span>
+      <span class="homey-form-checkbox-text" data-i18n="settings.debug_enable"></span>
+    </label>
+    <button class="homey-button-secondary-full" id="save-debug" data-i18n="settings.save"></button>
+  </section>
+
+  <section class="panel">
     <h2 data-i18n="settings.backup"></h2>
     <p data-i18n="settings.import_hint"></p>
     <button class="homey-button-secondary-full" id="export" data-i18n="settings.export"></button>
@@ -49,10 +61,12 @@
 
     async function load() {
       var mqtt = await api('GET', '/mqtt');
+      var debug = await api('GET', '/debug');
       document.getElementById('mqtt-url').value = mqtt.url || '';
       document.getElementById('mqtt-user').value = mqtt.username || '';
       document.getElementById('topic-learn').value = mqtt.topics.learn;
       document.getElementById('topic-received').value = mqtt.topics.received;
+      document.getElementById('debug-enabled').checked = debug.enabled === true;
     }
 
     function onHomeyReady(Homey) {
@@ -67,6 +81,17 @@
               learn: document.getElementById('topic-learn').value,
               received: document.getElementById('topic-received').value,
             },
+          });
+          Homey.alert(Homey.__('settings.saved'));
+        } catch (error) {
+          Homey.alert(error.message || error, 'error');
+        }
+      };
+
+      document.getElementById('save-debug').onclick = async function () {
+        try {
+          await api('PUT', '/debug', {
+            enabled: document.getElementById('debug-enabled').checked,
           });
           Homey.alert(Homey.__('settings.saved'));
         } catch (error) {
