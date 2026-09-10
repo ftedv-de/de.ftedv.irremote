@@ -43,17 +43,13 @@ module.exports = class IRRemoteApp extends Homey.App {
   }
 
   /**
-   * Safely probe Homey Core's validation of the real ManagerRF "tx" event.
+   * Test whether Homey Core's accepted ManagerRF "cmd" request supports a
+   * dynamic ProntoHex payload in addition to the manifest-defined command.
    *
-   * Signal.tx() is documented to accept an array of word indexes, not Pronto
-   * durations. Therefore this diagnostic deliberately sends an empty frame.
-   * It cannot represent a valid IR transmission; its purpose is only to learn
-   * whether Homey Core recognises the signal ID before validating the frame.
-   *
-   * We compare the former "dynamic_ir" ID with a guaranteed-missing ID. If
-   * Core returns different errors, the installed/core-side manifest still
-   * contains dynamic_ir. opts.device is retained so the request follows the
-   * exact satellite-routing path used by a real signal.tx() call.
+   * dynamic_ir/RUNTIME is deliberately registered with a tiny one-pair
+   * ProntoHex fallback. If Core ignores the extra payload, only that harmless
+   * fallback is sent. If Core consumes payload, the learned IR command should
+   * be transmitted while opts.device still provides satellite routing.
    */
   async sendIR(code, repetitions = 1, device) {
     if (!device) throw new Error('A Homey device is required for IR satellite routing');
@@ -67,51 +63,34 @@ module.exports = class IRRemoteApp extends Homey.App {
       throw new Error('Homey RF core client is unavailable');
     }
 
-    const opts = {
-      repetitions,
-      device,
-    };
-
-    const probes = [
-      {
-        name: 'former dynamic_ir signal',
-        signalId: 'dynamic_ir',
-      },
-      {
-        name: 'guaranteed missing signal',
-        signalId: '__ftedv_missing_ir_signal__',
-      },
-    ];
-
     this.log(
-      `=== RF TX VALIDATION PROBE: repetitions=${repetitions}, prontoWords=${payload.split(/\s+/).length} ===`,
+      `=== RF CMD DYNAMIC PAYLOAD PROBE: repetitions=${repetitions}, prontoWords=${payload.split(/\s+/).length} ===`,
     );
-    this.log('Diagnostic uses frame=[]; stored ProntoHex is NOT transmitted');
+    this.log('Using registered signal ir.dynamic_ir, command RUNTIME');
+    this.log('Manifest fallback is a one-pair Pronto pulse; learned code is sent as top-level payload');
 
-    const results = [];
+    try {
+      const result = await client.emit('cmd', {
+        signalId: 'dynamic_ir',
+        frequency: 'ir',
+        commandId: 'RUNTIME',
+        opts: {
+          repetitions,
+          device,
+        },
+        payload,
+      });
 
-    for (const probe of probes) {
-      this.log(`Trying tx validation probe: ${probe.name} (${probe.signalId})`);
-
-      try {
-        const result = await client.emit('tx', {
-          signalId: probe.signalId,
-          frequency: 'ir',
-          opts,
-          frame: [],
-        });
-
-        const rendered = typeof result === 'undefined' ? '<undefined>' : result;
-        this.log(`tx validation probe unexpectedly succeeded: ${probe.name}`, rendered);
-        results.push(`${probe.signalId}: success`);
-      } catch (error) {
-        const message = error && error.message ? error.message : String(error);
-        this.log(`tx validation probe rejected: ${probe.name}: ${message}`);
-        results.push(`${probe.signalId}: ${message}`);
-      }
+      this.log(
+        'RF cmd dynamic-payload probe succeeded. Check whether the target device reacted to the learned command.',
+        typeof result === 'undefined' ? '<undefined>' : result,
+      );
+      return result;
+    } catch (error) {
+      const message = error && error.message ? error.message : String(error);
+      this.log(`RF cmd dynamic-payload probe rejected: ${message}`);
+      throw error;
     }
-
-    throw new Error(`RF tx validation probe complete. ${results.join(' | ')}`);
   }
 
   rawToProntoHex(raw, carrier) {
