@@ -4,43 +4,19 @@ const Homey = require('homey');
 const { randomUUID } = require('crypto');
 const MqttService = require('./lib/MqttService');
 const IrCodeConverter = require('./lib/IrCodeConverter');
-const IrSignalEncoder = require('./lib/IrSignalEncoder');
+const IrCodebookEncoder = require('./lib/IrCodebookEncoder');
 
-const IR_SIGNAL_ID = 'dynamic_raw_ir';
 const IR_WORD_INDEX_TESTS = {
-  64: {
-    signalId: 'word_index_test_64',
-    testedWordIndex: 63,
-  },
-  256: {
-    signalId: 'word_index_test_256',
-    testedWordIndex: 255,
-  },
-  512: {
-    signalId: 'word_index_test_512',
-    testedWordIndex: 511,
-  },
-  1024: {
-    signalId: 'word_index_test_1024',
-    testedWordIndex: 1023,
-  },
-};
-const IR_SIGNAL_CONFIG = {
-  carrier: 38000,
-  words: [
-    [4707, 4523], // Samsung/NEC-style header
-    [605, 552], // short data space
-    [605, 1683], // long data space
-    [579, 10124], // trailer
-  ],
-  timingTolerance: 0.25,
-  carrierToleranceHz: 1500,
+  64: { signalId: 'word_index_test_64', testedWordIndex: 63 },
+  256: { signalId: 'word_index_test_256', testedWordIndex: 255 },
+  512: { signalId: 'word_index_test_512', testedWordIndex: 511 },
+  1024: { signalId: 'word_index_test_1024', testedWordIndex: 1023 },
 };
 
 module.exports = class IRRemoteApp extends Homey.App {
 
   async onInit() {
-    this.irEncoder = new IrSignalEncoder(IR_SIGNAL_CONFIG);
+    this.irEncoder = new IrCodebookEncoder();
 
     this.mqtt = new MqttService(this);
     await this.mqtt.init().catch((error) => this.error('MQTT initialization failed', error));
@@ -87,16 +63,16 @@ module.exports = class IRRemoteApp extends Homey.App {
 
     const normalizedCode = IrCodeConverter.normalizeCode(code);
     const raw = IrCodeConverter.codeToRaw(normalizedCode);
-    const frame = this.irEncoder.encode(raw);
-    const signal = this.homey.rf.getSignalInfrared(IR_SIGNAL_ID);
+    const encoded = this.irEncoder.encode(raw, repetitions);
+    const signal = this.homey.rf.getSignalInfrared(encoded.signalId);
 
     this.debugLog(
-      `IR TX: format=${normalizedCode.format}, carrier=${raw.carrier}Hz, repetitions=${repetitions}, frameWords=${frame.length}`,
+      `IR TX: format=${normalizedCode.format}, requestedCarrier=${raw.carrier}Hz, signal=${encoded.signalId}, carrier=${encoded.carrier}Hz, carrierError=${encoded.carrierErrorHz}Hz, repetitions=${repetitions}, txRepetitions=${encoded.txRepetitions}, frameWords=${encoded.frame.length}, maxTimingError=${(encoded.quantization.maxTimingError * 100).toFixed(1)}%, terminalSpaceClamped=${encoded.quantization.terminalSpaceClamped}`,
     );
 
     try {
-      await signal.tx(frame, {
-        repetitions,
+      await signal.tx(encoded.frame, {
+        repetitions: encoded.txRepetitions,
         device,
       });
       this.debugLog('IR TX succeeded');
@@ -125,10 +101,7 @@ module.exports = class IRRemoteApp extends Homey.App {
     );
 
     try {
-      await signal.tx(frame, {
-        repetitions: 1,
-        device,
-      });
+      await signal.tx(frame, { repetitions: 1, device });
       this.debugLog(
         `IR word-index diagnostic TX succeeded: word ${diagnostic.testedWordIndex} accepted`,
       );
