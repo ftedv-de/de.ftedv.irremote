@@ -55,6 +55,14 @@
       "method": "PUT",
       "path": "/mqtt"
     },
+    "getDebug": {
+      "method": "GET",
+      "path": "/debug"
+    },
+    "setDebug": {
+      "method": "PUT",
+      "path": "/debug"
+    },
     "getExport": {
       "method": "GET",
       "path": "/export"
