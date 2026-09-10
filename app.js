@@ -1,5 +1,7 @@
 'use strict';
 
+const fs = require('fs');
+const path = require('path');
 const Homey = require('homey');
 const { randomUUID } = require('crypto');
 const MqttService = require('./lib/MqttService');
@@ -44,10 +46,9 @@ module.exports = class IRRemoteApp extends Homey.App {
   }
 
   /**
-   * Dump the Apps SDK RF runtime surface so we can inspect how ManagerRF
-   * forwards device context for Homey's satellite-mode routing.
-   *
-   * This is diagnostic-only: no RF/IR command is transmitted.
+   * Inspect the RF manager plus the actual SDK source files loaded inside the
+   * Homey app process. This lets us trace the private app->core RF RPC without
+   * guessing event names or transmitting anything.
    */
   logRfDiagnostics() {
     try {
@@ -75,15 +76,83 @@ module.exports = class IRRemoteApp extends Homey.App {
 
       this.log('=== RF CLIENT DIAGNOSTICS ===');
       const client = rf.__client;
-      if (!client) {
+      if (client) {
+        this.log('RF __client own properties:', Object.getOwnPropertyNames(client));
+        this.logPrototypeChain('RF __client', client, true);
+      } else {
         this.log('RF __client is not available');
-        return;
       }
 
-      this.log('RF __client own properties:', Object.getOwnPropertyNames(client));
-      this.logPrototypeChain('RF __client', client, true);
+      this.logHomeySdkSources();
     } catch (error) {
       this.error('RF runtime diagnostics failed', error);
+    }
+  }
+
+  logHomeySdkSources() {
+    this.log('=== HOMEY SDK SOURCE DIAGNOSTICS ===');
+
+    let homeyEntry;
+    try {
+      homeyEntry = require.resolve('homey');
+      this.log('require.resolve("homey"):', homeyEntry);
+    } catch (error) {
+      this.error('Could not resolve Homey SDK entry', error);
+      return;
+    }
+
+    const candidates = [];
+    let current = path.dirname(homeyEntry);
+
+    for (let i = 0; i < 8; i += 1) {
+      candidates.push(path.join(current, 'manager', 'rf.js'));
+      candidates.push(path.join(current, 'manager', 'rf', 'index.js'));
+      current = path.dirname(current);
+    }
+
+    let rfSourcePath = candidates.find((candidate) => fs.existsSync(candidate));
+
+    if (!rfSourcePath) {
+      try {
+        rfSourcePath = require.resolve('@athombv/homey-apps-sdk-v3/manager/rf');
+      } catch (error) {
+        this.log('Direct @athombv/homey-apps-sdk-v3/manager/rf resolve failed:', error.message);
+      }
+    }
+
+    if (!rfSourcePath || !fs.existsSync(rfSourcePath)) {
+      this.log('Could not locate RF SDK source file');
+      return;
+    }
+
+    this.log('RF SDK source path:', rfSourcePath);
+
+    try {
+      const source = fs.readFileSync(rfSourcePath, 'utf8');
+      this.log('=== RF.JS SOURCE ===');
+      this.log(source.slice(0, 40000));
+
+      const requireTargets = [...source.matchAll(/require\(['"]([^'"]+)['"]\)/g)]
+        .map((match) => match[1])
+        .filter((target) => /signal|infrared|rf/i.test(target));
+
+      this.log('RF source interesting require() targets:', requireTargets);
+
+      for (const target of [...new Set(requireTargets)]) {
+        try {
+          const resolved = require.resolve(target, { paths: [path.dirname(rfSourcePath)] });
+          this.log(`Resolved ${target}:`, resolved);
+
+          if (fs.existsSync(resolved)) {
+            this.log(`=== SOURCE ${target} ===`);
+            this.log(fs.readFileSync(resolved, 'utf8').slice(0, 40000));
+          }
+        } catch (error) {
+          this.log(`Could not resolve ${target}:`, error.message);
+        }
+      }
+    } catch (error) {
+      this.error('Failed reading RF SDK source', error);
     }
   }
 
