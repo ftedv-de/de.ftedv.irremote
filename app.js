@@ -7,7 +7,16 @@ const IrCodeConverter = require('./lib/IrCodeConverter');
 const IrSignalEncoder = require('./lib/IrSignalEncoder');
 
 const IR_SIGNAL_ID = 'dynamic_raw_ir';
-const IR_WORD_INDEX_TEST_SIGNAL_ID = 'word_index_test_64';
+const IR_WORD_INDEX_TESTS = {
+  64: {
+    signalId: 'word_index_test_64',
+    testedWordIndex: 63,
+  },
+  256: {
+    signalId: 'word_index_test_256',
+    testedWordIndex: 255,
+  },
+};
 const IR_SIGNAL_CONFIG = {
   carrier: 38000,
   words: [
@@ -91,17 +100,20 @@ module.exports = class IRRemoteApp extends Homey.App {
     }
   }
 
-  async sendIrWordIndexDiagnostic(deviceId) {
+  async sendIrWordIndexDiagnostic(deviceId, wordCount = 256) {
     if (!this.isDebugEnabled()) {
       throw new Error('Enable debug logging before running IR diagnostics');
     }
 
+    const diagnostic = IR_WORD_INDEX_TESTS[wordCount];
+    if (!diagnostic) throw new Error(`Unsupported IR diagnostic word count: ${wordCount}`);
+
     const device = this.getRemote(deviceId);
-    const signal = this.homey.rf.getSignalInfrared(IR_WORD_INDEX_TEST_SIGNAL_ID);
-    const frame = [0, 63, 63, 63];
+    const signal = this.homey.rf.getSignalInfrared(diagnostic.signalId);
+    const frame = [0, diagnostic.testedWordIndex, diagnostic.testedWordIndex, diagnostic.testedWordIndex];
 
     this.debugLog(
-      `IR word-index diagnostic TX: signal=${IR_WORD_INDEX_TEST_SIGNAL_ID}, frame=${frame.join(',')}`,
+      `IR word-index diagnostic TX: signal=${diagnostic.signalId}, frame=${frame.join(',')}`,
     );
 
     try {
@@ -109,11 +121,13 @@ module.exports = class IRRemoteApp extends Homey.App {
         repetitions: 1,
         device,
       });
-      this.debugLog('IR word-index diagnostic TX succeeded: word 63 accepted');
+      this.debugLog(
+        `IR word-index diagnostic TX succeeded: word ${diagnostic.testedWordIndex} accepted`,
+      );
       return {
-        signalId: IR_WORD_INDEX_TEST_SIGNAL_ID,
-        wordCount: 64,
-        testedWordIndex: 63,
+        signalId: diagnostic.signalId,
+        wordCount,
+        testedWordIndex: diagnostic.testedWordIndex,
         frame,
       };
     } catch (error) {
