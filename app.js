@@ -7,6 +7,7 @@ const IrCodeConverter = require('./lib/IrCodeConverter');
 const IrSignalEncoder = require('./lib/IrSignalEncoder');
 
 const IR_SIGNAL_ID = 'dynamic_raw_ir';
+const IR_WORD_INDEX_TEST_SIGNAL_ID = 'word_index_test_64';
 const IR_SIGNAL_CONFIG = {
   carrier: 38000,
   words: [
@@ -86,6 +87,38 @@ module.exports = class IRRemoteApp extends Homey.App {
     } catch (error) {
       const message = error && error.message ? error.message : String(error);
       this.error(`IR TX failed: ${message}`);
+      throw error;
+    }
+  }
+
+  async sendIrWordIndexDiagnostic(deviceId) {
+    if (!this.isDebugEnabled()) {
+      throw new Error('Enable debug logging before running IR diagnostics');
+    }
+
+    const device = this.getRemote(deviceId);
+    const signal = this.homey.rf.getSignalInfrared(IR_WORD_INDEX_TEST_SIGNAL_ID);
+    const frame = [0, 63, 63, 63];
+
+    this.debugLog(
+      `IR word-index diagnostic TX: signal=${IR_WORD_INDEX_TEST_SIGNAL_ID}, frame=${frame.join(',')}`,
+    );
+
+    try {
+      await signal.tx(frame, {
+        repetitions: 1,
+        device,
+      });
+      this.debugLog('IR word-index diagnostic TX succeeded: word 63 accepted');
+      return {
+        signalId: IR_WORD_INDEX_TEST_SIGNAL_ID,
+        wordCount: 64,
+        testedWordIndex: 63,
+        frame,
+      };
+    } catch (error) {
+      const message = error && error.message ? error.message : String(error);
+      this.error(`IR word-index diagnostic TX failed: ${message}`);
       throw error;
     }
   }
