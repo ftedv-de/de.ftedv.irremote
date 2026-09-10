@@ -12,12 +12,27 @@ module.exports = class IRRemoteDevice extends Homey.Device {
     await this.syncButtonCapabilities();
   }
 
+  cloneButtons(buttons) {
+    return buttons.map((button) => ({
+      ...button,
+      code: button.code
+        ? {
+          ...button.code,
+          code: Array.isArray(button.code.code) ? [...button.code.code] : button.code.code,
+        }
+        : null,
+    }));
+  }
+
   getButtons() {
-    return this.getStoreValue('buttons') || [];
+    const buttons = this.getStoreValue('buttons');
+    return Array.isArray(buttons) ? this.cloneButtons(buttons) : [];
   }
 
   async setButtons(buttons) {
-    await this.setStoreValue('buttons', buttons);
+    if (!Array.isArray(buttons)) throw new TypeError('Buttons must be an array');
+    const snapshot = this.cloneButtons(buttons);
+    await this.setStoreValue('buttons', snapshot);
     await this.syncButtonCapabilities();
   }
 
