@@ -4,21 +4,26 @@ const Homey = require('homey');
 const { randomUUID } = require('crypto');
 const MqttService = require('./lib/MqttService');
 const IrCodeConverter = require('./lib/IrCodeConverter');
+const IrSignalEncoder = require('./lib/IrSignalEncoder');
 
 const IR_SIGNAL_ID = 'dynamic_raw_ir';
-const IR_CARRIER = 38000;
-const IR_WORDS = [
-  [4707, 4523], // header
-  [605, 552], // short bit
-  [605, 1683], // long bit
-  [579, 10124], // trailer
-];
-const TIMING_TOLERANCE = 0.25;
-const CARRIER_TOLERANCE_HZ = 1500;
+const IR_SIGNAL_CONFIG = {
+  carrier: 38000,
+  words: [
+    [4707, 4523], // Samsung/NEC-style header
+    [605, 552], // short data space
+    [605, 1683], // long data space
+    [579, 10124], // trailer
+  ],
+  timingTolerance: 0.25,
+  carrierToleranceHz: 1500,
+};
 
 module.exports = class IRRemoteApp extends Homey.App {
 
   async onInit() {
+    this.irEncoder = new IrSignalEncoder(IR_SIGNAL_CONFIG);
+
     this.mqtt = new MqttService(this);
     await this.mqtt.init().catch((error) => this.error('MQTT initialization failed', error));
 
@@ -54,87 +59,31 @@ module.exports = class IRRemoteApp extends Homey.App {
   async sendIR(code, repetitions = 1, device) {
     if (!device) throw new Error('A Homey device is required for IR satellite routing');
 
-    const raw = IrCodeConverter.codeToRaw(code);
-    if (Math.abs(raw.carrier - IR_CARRIER) > CARRIER_TOLERANCE_HZ) {
-      throw new Error(
-        `IR carrier ${raw.carrier} Hz cannot be sent by the current ${IR_CARRIER} Hz signal`,
-      );
-    }
-
-    const frame = this.rawTimingsToFrame(raw.intro);
+    const normalizedCode = IrCodeConverter.normalizeCode(code);
+    const raw = IrCodeConverter.codeToRaw(normalizedCode);
+    const frame = this.irEncoder.encode(raw);
     const signal = this.homey.rf.getSignalInfrared(IR_SIGNAL_ID);
 
     this.log(
-      `=== RF TX STORED IR: format=${code.format}, carrier=${raw.carrier}Hz, repetitions=${repetitions}, frameWords=${frame.length} ===`,
+      `IR TX: format=${normalizedCode.format}, carrier=${raw.carrier}Hz, repetitions=${repetitions}, frameWords=${frame.length}`,
     );
-    this.log(`Encoded stored IR frame: ${frame.join(',')}`);
 
     try {
-      const result = await signal.tx(frame, {
+      await signal.tx(frame, {
         repetitions,
         device,
       });
-      this.log(
-        'stored IR tx succeeded',
-        typeof result === 'undefined' ? '<undefined>' : result,
-      );
+      this.log('IR TX succeeded');
       return true;
     } catch (error) {
       const message = error && error.message ? error.message : String(error);
-      this.log(`stored IR tx rejected: ${message}`);
+      this.error(`IR TX failed: ${message}`);
       throw error;
     }
   }
 
-  rawTimingsToFrame(raw) {
-    if (!Array.isArray(raw) || raw.length === 0 || raw.length % 2 !== 0) {
-      throw new Error('Raw IR timings must contain complete mark/space pairs');
-    }
-
-    const frame = [];
-    for (let offset = 0; offset < raw.length; offset += 2) {
-      const pair = [Math.abs(raw[offset]), Math.abs(raw[offset + 1])];
-      const match = this.findClosestIrWord(pair);
-      if (!match) {
-        throw new Error(
-          `Unsupported IR timing pair ${pair[0]}/${pair[1]} us at pair ${offset / 2}`,
-        );
-      }
-      frame.push(match.index);
-    }
-    return frame;
-  }
-
-  findClosestIrWord(pair) {
-    let best = null;
-
-    IR_WORDS.forEach((word, index) => {
-      const markError = Math.abs(pair[0] - word[0]) / word[0];
-      const spaceError = Math.abs(pair[1] - word[1]) / word[1];
-      if (markError > TIMING_TOLERANCE || spaceError > TIMING_TOLERANCE) return;
-
-      const score = markError + spaceError;
-      if (!best || score < best.score) best = { index, score };
-    });
-
-    return best;
-  }
-
   rawToProntoHex(raw, carrier) {
-    if (!Array.isArray(raw) || raw.length === 0 || raw.length % 2 !== 0) {
-      throw new Error('Raw IR code must contain complete mark/space pairs');
-    }
-    if (!Number.isInteger(carrier) || carrier < 30000 || carrier > 45000) {
-      throw new Error('IR carrier must be between 30000 and 45000 Hz');
-    }
-
-    const frequencyWord = Math.round(1000000 / (carrier * 0.241246));
-    const durationWords = raw.map((duration) => Math.max(
-      1,
-      Math.round((Math.abs(duration) * carrier) / 1000000),
-    ));
-    const words = [0, frequencyWord, raw.length / 2, 0, ...durationWords];
-    return words.map((word) => word.toString(16).toUpperCase().padStart(4, '0')).join(' ');
+    return IrCodeConverter.rawToProntoHex(raw, carrier);
   }
 
   getRemoteDevices() {
@@ -162,7 +111,7 @@ module.exports = class IRRemoteApp extends Homey.App {
       }
 
       let code = null;
-      if (button.code) code = this.mqtt.validateCode(button.code);
+      if (button.code) code = IrCodeConverter.normalizeCode(button.code);
       return {
         id: typeof button.id === 'string' && button.id ? button.id : randomUUID(),
         name: button.name.trim().slice(0, 80),
