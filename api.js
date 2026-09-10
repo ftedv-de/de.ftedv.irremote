@@ -89,7 +89,7 @@ module.exports = {
     if (!body || typeof body.deviceId !== 'string' || !body.deviceId) {
       throw new Error('Remote device is required');
     }
-    const wordCount = body.wordCount === undefined ? 512 : Number(body.wordCount);
+    const wordCount = body.wordCount === undefined ? 1024 : Number(body.wordCount);
     if (!Number.isInteger(wordCount)) throw new Error('Diagnostic word count must be an integer');
     return homey.app.sendIrWordIndexDiagnostic(body.deviceId, wordCount);
   },
