@@ -6,8 +6,10 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "lint": "eslint --ext .js,.ts --ignore-path .gitignore .",
-    "test": "node --test"
+    "generate:ir-codebooks": "node scripts/generate-ir-codebooks.js",
+    "homey:run": "npm run generate:ir-codebooks && homey app run --remote",
+    "lint": "npm run generate:ir-codebooks && eslint --ext .js,.ts --ignore-path .gitignore .",
+    "test": "npm run generate:ir-codebooks && node --test"
   },
   "dependencies": {
     "mqtt": "^5.14.1"
