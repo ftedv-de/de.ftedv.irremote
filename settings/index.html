@@ -122,7 +122,7 @@
         try {
           var result = await api('POST', '/debug/ir-word-index', {
             deviceId: document.getElementById('ir-word-test-device').value,
-            wordCount: 256,
+            wordCount: 512,
           });
           Homey.alert(Homey.__('settings.ir_word_test_success')
             .replace('__index__', result.testedWordIndex)
