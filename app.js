@@ -36,10 +36,80 @@ module.exports = class IRRemoteApp extends Homey.App {
     });
 
     this.log('IR Remote has been initialized');
+    this.logRfDiagnostics();
   }
 
   async onUninit() {
     await this.mqtt.destroy();
+  }
+
+  /**
+   * Dump the Apps SDK RF/IR runtime surface so we can inspect how signal.cmd()
+   * forwards the device context used by Homey's satellite-mode routing.
+   *
+   * This is intentionally diagnostic-only: no command is transmitted and no
+   * runtime manifest data is modified.
+   */
+  logRfDiagnostics() {
+    try {
+      this.log('=== RF MANAGER DIAGNOSTICS ===');
+      this.log('RF own properties:', Object.getOwnPropertyNames(this.homey.rf));
+      this.logPrototypeChain('RF manager', this.homey.rf);
+
+      const signal = this.homey.rf.getSignalInfrared('dynamic_ir');
+
+      this.log('=== IR SIGNAL DIAGNOSTICS ===');
+      this.log('Signal own properties:', Object.getOwnPropertyNames(signal));
+      this.logPrototypeChain('IR signal', signal, true);
+
+      for (const methodName of ['cmd', 'tx']) {
+        const method = signal[methodName];
+        if (typeof method === 'function') {
+          this.log(
+            `IR signal ${methodName}():`,
+            Function.prototype.toString.call(method).slice(0, 6000),
+          );
+        }
+      }
+    } catch (error) {
+      this.error('RF runtime diagnostics failed', error);
+    }
+  }
+
+  logPrototypeChain(label, object, includeFunctions = false) {
+    let current = object;
+    let level = 0;
+
+    while (current && level < 10) {
+      const constructorName = current.constructor?.name || '<unknown>';
+      const propertyNames = Object.getOwnPropertyNames(current);
+
+      this.log(`${label} prototype ${level} (${constructorName}):`, propertyNames);
+
+      if (includeFunctions) {
+        for (const propertyName of propertyNames) {
+          if (propertyName === 'constructor') continue;
+
+          let value;
+          try {
+            value = current[propertyName];
+          } catch (error) {
+            this.log(`${label}.${propertyName}: <getter threw: ${error.message}>`);
+            continue;
+          }
+
+          if (typeof value === 'function') {
+            this.log(
+              `${label}.${propertyName}():`,
+              Function.prototype.toString.call(value).slice(0, 6000),
+            );
+          }
+        }
+      }
+
+      current = Object.getPrototypeOf(current);
+      level += 1;
+    }
   }
 
   /**
@@ -55,7 +125,7 @@ module.exports = class IRRemoteApp extends Homey.App {
       : this.rawToProntoHex(code.code, code.carrier || 38000);
 
     throw new Error(
-      `Dynamic ProntoHex satellite transmission is not available through the public Apps SDK (repetitions=${repetitions}, words=${payload.split(/\\s+/).length})`,
+      `Dynamic ProntoHex satellite transmission is not available through the public Apps SDK (repetitions=${repetitions}, words=${payload.split(/\s+/).length})`,
     );
   }
 
