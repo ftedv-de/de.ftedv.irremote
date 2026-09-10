@@ -72,6 +72,7 @@ module.exports = class IRRemoteApp extends Homey.App {
     this.log(
       `=== RF CMD PAYLOAD A/B PROBE: repetitions=${repetitions}, prontoWords=${payload.split(/\s+/).length} ===`,
     );
+    this.log(`LEARNED PRONTO PAYLOAD: ${payload}`);
     this.log('A = registered RUNTIME command only; B = same request plus learned top-level payload');
 
     const results = [];
@@ -108,9 +109,6 @@ module.exports = class IRRemoteApp extends Homey.App {
 
     this.log(`RF cmd payload A/B probe complete. ${results.join(' | ')}`);
 
-    // Keep the Homey UI action successful when the diagnostic RF requests were
-    // accepted. During the probe we surface individual failures in the logs
-    // instead of intentionally throwing after successful transmissions.
     return !hadFailure;
   }
 
