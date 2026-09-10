@@ -43,13 +43,9 @@ module.exports = class IRRemoteApp extends Homey.App {
   }
 
   /**
-   * Test whether Homey Core's accepted ManagerRF "cmd" request supports a
-   * dynamic ProntoHex payload in addition to the manifest-defined command.
-   *
-   * dynamic_ir/RUNTIME is deliberately registered with a tiny one-pair
-   * ProntoHex fallback. If Core ignores the extra payload, only that harmless
-   * fallback is sent. If Core consumes payload, the learned IR command should
-   * be transmitted while opts.device still provides satellite routing.
+   * Compare the accepted ManagerRF "cmd" request with and without an extra
+   * dynamic ProntoHex payload. This separates a bad manifest fallback from a
+   * payload-related Core rejection.
    */
   async sendIR(code, repetitions = 1, device) {
     if (!device) throw new Error('A Homey device is required for IR satellite routing');
@@ -63,34 +59,52 @@ module.exports = class IRRemoteApp extends Homey.App {
       throw new Error('Homey RF core client is unavailable');
     }
 
+    const baseRequest = {
+      signalId: 'dynamic_ir',
+      frequency: 'ir',
+      commandId: 'RUNTIME',
+      opts: {
+        repetitions,
+        device,
+      },
+    };
+
     this.log(
-      `=== RF CMD DYNAMIC PAYLOAD PROBE: repetitions=${repetitions}, prontoWords=${payload.split(/\s+/).length} ===`,
+      `=== RF CMD PAYLOAD A/B PROBE: repetitions=${repetitions}, prontoWords=${payload.split(/\s+/).length} ===`,
     );
-    this.log('Using registered signal ir.dynamic_ir, command RUNTIME');
-    this.log('Manifest fallback is a one-pair Pronto pulse; learned code is sent as top-level payload');
+    this.log('A = registered RUNTIME command only; B = same request plus learned top-level payload');
 
-    try {
-      const result = await client.emit('cmd', {
-        signalId: 'dynamic_ir',
-        frequency: 'ir',
-        commandId: 'RUNTIME',
-        opts: {
-          repetitions,
-          device,
+    const results = [];
+
+    for (const probe of [
+      {
+        name: 'A: manifest command only',
+        request: baseRequest,
+      },
+      {
+        name: 'B: manifest command + dynamic payload',
+        request: {
+          ...baseRequest,
+          payload,
         },
-        payload,
-      });
-
-      this.log(
-        'RF cmd dynamic-payload probe succeeded. Check whether the target device reacted to the learned command.',
-        typeof result === 'undefined' ? '<undefined>' : result,
-      );
-      return result;
-    } catch (error) {
-      const message = error && error.message ? error.message : String(error);
-      this.log(`RF cmd dynamic-payload probe rejected: ${message}`);
-      throw error;
+      },
+    ]) {
+      this.log(`Trying ${probe.name}`);
+      try {
+        const result = await client.emit('cmd', probe.request);
+        this.log(
+          `${probe.name} succeeded`,
+          typeof result === 'undefined' ? '<undefined>' : result,
+        );
+        results.push(`${probe.name}: success`);
+      } catch (error) {
+        const message = error && error.message ? error.message : String(error);
+        this.log(`${probe.name} rejected: ${message}`);
+        results.push(`${probe.name}: ${message}`);
+      }
     }
+
+    throw new Error(`RF cmd payload A/B probe complete. ${results.join(' | ')}`);
   }
 
   rawToProntoHex(raw, carrier) {
