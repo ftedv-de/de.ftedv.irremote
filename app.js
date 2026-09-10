@@ -56,6 +56,14 @@ module.exports = class IRRemoteApp extends Homey.App {
     await this.mqtt.destroy();
   }
 
+  isDebugEnabled() {
+    return this.homey.settings.get('debug') === true;
+  }
+
+  debugLog(...args) {
+    if (this.isDebugEnabled()) this.log('[debug]', ...args);
+  }
+
   async sendIR(code, repetitions = 1, device) {
     if (!device) throw new Error('A Homey device is required for IR satellite routing');
 
@@ -64,7 +72,7 @@ module.exports = class IRRemoteApp extends Homey.App {
     const frame = this.irEncoder.encode(raw);
     const signal = this.homey.rf.getSignalInfrared(IR_SIGNAL_ID);
 
-    this.log(
+    this.debugLog(
       `IR TX: format=${normalizedCode.format}, carrier=${raw.carrier}Hz, repetitions=${repetitions}, frameWords=${frame.length}`,
     );
 
@@ -73,7 +81,7 @@ module.exports = class IRRemoteApp extends Homey.App {
         repetitions,
         device,
       });
-      this.log('IR TX succeeded');
+      this.debugLog('IR TX succeeded');
       return true;
     } catch (error) {
       const message = error && error.message ? error.message : String(error);
