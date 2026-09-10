@@ -16,6 +16,10 @@ const IR_WORD_INDEX_TESTS = {
     signalId: 'word_index_test_256',
     testedWordIndex: 255,
   },
+  512: {
+    signalId: 'word_index_test_512',
+    testedWordIndex: 511,
+  },
 };
 const IR_SIGNAL_CONFIG = {
   carrier: 38000,
@@ -100,7 +104,7 @@ module.exports = class IRRemoteApp extends Homey.App {
     }
   }
 
-  async sendIrWordIndexDiagnostic(deviceId, wordCount = 256) {
+  async sendIrWordIndexDiagnostic(deviceId, wordCount = 512) {
     if (!this.isDebugEnabled()) {
       throw new Error('Enable debug logging before running IR diagnostics');
     }
