@@ -1,7 +1,6 @@
 'use strict';
 
 const fs = require('fs');
-const path = require('path');
 const Homey = require('homey');
 const { randomUUID } = require('crypto');
 const MqttService = require('./lib/MqttService');
@@ -46,8 +45,8 @@ module.exports = class IRRemoteApp extends Homey.App {
   }
 
   /**
-   * Inspect the RF manager plus the actual SDK source files loaded inside the
-   * Homey app process. This lets us trace the private app->core RF RPC without
+   * Inspect the RF manager plus the actual SDK modules loaded inside the Homey
+   * app process. This lets us trace the private app->core RF RPC without
    * guessing event names or transmitting anything.
    */
   logRfDiagnostics() {
@@ -98,78 +97,56 @@ module.exports = class IRRemoteApp extends Homey.App {
       this.log('Could not resolve app-facing Homey entry:', error.message);
     }
 
-    const sdkRoot = '/app/packages/homey-local/lib/AppProcess/node_modules/@athombv/homey-apps-sdk-v3';
-    const candidates = [
-      path.join(sdkRoot, 'manager', 'rf.js'),
-      path.join(sdkRoot, 'manager', 'rf', 'index.js'),
-    ];
+    const cacheEntries = Object.values(require.cache || {});
+    this.log('require.cache entry count:', cacheEntries.length);
 
-    this.log('Embedded SDK root exists:', fs.existsSync(sdkRoot), sdkRoot);
-    this.log('RF source candidates:', candidates.map((candidate) => ({
-      path: candidate,
-      exists: fs.existsSync(candidate),
-    })));
+    const sdkEntries = cacheEntries.filter((moduleEntry) => {
+      const filename = moduleEntry && moduleEntry.filename;
+      return typeof filename === 'string'
+        && (/homey-apps-sdk-v3/i.test(filename)
+          || /[/\\]manager[/\\]rf(?:[/\\]|\.js$)/i.test(filename)
+          || /signal.*infrared/i.test(filename));
+    });
 
-    const rfSourcePath = candidates.find((candidate) => fs.existsSync(candidate));
-    if (!rfSourcePath) {
-      this.log('Could not locate RF SDK source file at embedded Homey runtime path');
-      return;
-    }
+    this.log('Loaded SDK/RF module filenames:', sdkEntries.map((entry) => entry.filename));
 
-    this.log('RF SDK source path:', rfSourcePath);
+    const interestingEntries = sdkEntries.filter((entry) => /(?:manager[/\\]rf\.js|signal|infrared)/i.test(entry.filename));
 
-    try {
-      const source = fs.readFileSync(rfSourcePath, 'utf8');
-      this.log('=== RF.JS SOURCE ===');
-      this.log(source.slice(0, 50000));
+    for (const entry of interestingEntries) {
+      const filename = entry.filename;
+      this.log(`=== LOADED MODULE ${filename} ===`);
 
-      const requireTargets = [...source.matchAll(/require\(['"]([^'"]+)['"]\)/g)]
-        .map((match) => match[1]);
+      try {
+        if (fs.existsSync(filename)) {
+          this.log(fs.readFileSync(filename, 'utf8').slice(0, 60000));
+        } else {
+          this.log('Loaded module filename is not directly readable from app filesystem');
+        }
+      } catch (error) {
+        this.log(`Could not read ${filename}:`, error.message);
+      }
 
-      this.log('RF source require() targets:', requireTargets);
-
-      for (const target of [...new Set(requireTargets)]) {
-        if (!target.startsWith('.')) continue;
-
-        const base = path.resolve(path.dirname(rfSourcePath), target);
-        const targetCandidates = [
-          base,
-          `${base}.js`,
-          path.join(base, 'index.js'),
-        ];
-        const resolved = targetCandidates.find((candidate) => fs.existsSync(candidate));
-
-        this.log(`Relative require ${target}:`, {
-          candidates: targetCandidates,
-          resolved: resolved || null,
-        });
-
-        if (!resolved) continue;
-        if (!/signal|infrared|rf/i.test(resolved)) continue;
-
+      if (entry.exports) {
         try {
-          this.log(`=== SOURCE ${target} (${resolved}) ===`);
-          this.log(fs.readFileSync(resolved, 'utf8').slice(0, 50000));
+          const exported = entry.exports;
+          this.log('Export type:', typeof exported);
+          this.log('Export own properties:', Object.getOwnPropertyNames(exported));
+          if (typeof exported === 'function') {
+            this.log('Export function source:', Function.prototype.toString.call(exported).slice(0, 30000));
+            if (exported.prototype) {
+              this.logPrototypeChain(`Export ${exported.name || '<anonymous>'}`, exported.prototype, true);
+            }
+          } else if (typeof exported === 'object') {
+            this.logPrototypeChain(`Export ${filename}`, exported, true);
+          }
         } catch (error) {
-          this.log(`Could not read ${resolved}:`, error.message);
+          this.log(`Could not inspect exports for ${filename}:`, error.message);
         }
       }
+    }
 
-      const likelySignalFiles = [
-        path.join(sdkRoot, 'lib', 'Signal.js'),
-        path.join(sdkRoot, 'lib', 'SignalInfrared.js'),
-        path.join(sdkRoot, 'lib', 'SignalIR.js'),
-        path.join(sdkRoot, 'manager', 'rf', 'Signal.js'),
-        path.join(sdkRoot, 'manager', 'rf', 'SignalInfrared.js'),
-      ];
-
-      for (const file of likelySignalFiles) {
-        if (!fs.existsSync(file)) continue;
-        this.log(`=== LIKELY SIGNAL SOURCE ${file} ===`);
-        this.log(fs.readFileSync(file, 'utf8').slice(0, 50000));
-      }
-    } catch (error) {
-      this.error('Failed reading RF SDK source', error);
+    if (interestingEntries.length === 0) {
+      this.log('No RF/Signal SDK modules were visible in require.cache');
     }
   }
 
