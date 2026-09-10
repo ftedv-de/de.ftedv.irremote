@@ -3,6 +3,18 @@
 const Homey = require('homey');
 const { randomUUID } = require('crypto');
 const MqttService = require('./lib/MqttService');
+const IrCodeConverter = require('./lib/IrCodeConverter');
+
+const IR_SIGNAL_ID = 'dynamic_raw_ir';
+const IR_CARRIER = 38000;
+const IR_WORDS = [
+  [4707, 4523], // header
+  [605, 552], // short bit
+  [605, 1683], // long bit
+  [579, 10124], // trailer
+];
+const TIMING_TOLERANCE = 0.25;
+const CARRIER_TOLERANCE_HZ = 1500;
 
 module.exports = class IRRemoteApp extends Homey.App {
 
@@ -42,27 +54,20 @@ module.exports = class IRRemoteApp extends Homey.App {
   async sendIR(code, repetitions = 1, device) {
     if (!device) throw new Error('A Homey device is required for IR satellite routing');
 
-    // Same known-good Samsung 0x3A8EC00B probe as before, but now every
-    // mark/space pair is selected through the dynamic frame. There is no
-    // fixed sof/eof in the signal definition anymore:
-    //   words[0] = header
-    //   words[1] = bit 0
-    //   words[2] = bit 1
-    //   words[3] = trailer
-    const bits = [
-      0, 0, 1, 1, 1, 0, 1, 0,
-      1, 0, 0, 0, 1, 1, 1, 0,
-      1, 1, 0, 0, 0, 0, 0, 0,
-      0, 0, 0, 0, 1, 0, 1, 1,
-    ];
-    const frame = [0, ...bits.map((bit) => bit + 1), 3];
+    const raw = IrCodeConverter.codeToRaw(code);
+    if (Math.abs(raw.carrier - IR_CARRIER) > CARRIER_TOLERANCE_HZ) {
+      throw new Error(
+        `IR carrier ${raw.carrier} Hz cannot be sent by the current ${IR_CARRIER} Hz signal`,
+      );
+    }
 
-    const signal = this.homey.rf.getSignalInfrared('dynamic_raw_ir');
+    const frame = this.rawTimingsToFrame(raw.intro);
+    const signal = this.homey.rf.getSignalInfrared(IR_SIGNAL_ID);
 
     this.log(
-      `=== RF TX WORD-ONLY IR PROBE: repetitions=${repetitions}, frameWords=${frame.length} ===`,
+      `=== RF TX STORED IR: format=${code.format}, carrier=${raw.carrier}Hz, repetitions=${repetitions}, frameWords=${frame.length} ===`,
     );
-    this.log('Sending Samsung 0x3A8EC00B with header, data and trailer all selected by the dynamic frame');
+    this.log(`Encoded stored IR frame: ${frame.join(',')}`);
 
     try {
       const result = await signal.tx(frame, {
@@ -70,15 +75,49 @@ module.exports = class IRRemoteApp extends Homey.App {
         device,
       });
       this.log(
-        'word-only regular IR tx probe succeeded',
+        'stored IR tx succeeded',
         typeof result === 'undefined' ? '<undefined>' : result,
       );
       return true;
     } catch (error) {
       const message = error && error.message ? error.message : String(error);
-      this.log(`word-only regular IR tx probe rejected: ${message}`);
+      this.log(`stored IR tx rejected: ${message}`);
       throw error;
     }
+  }
+
+  rawTimingsToFrame(raw) {
+    if (!Array.isArray(raw) || raw.length === 0 || raw.length % 2 !== 0) {
+      throw new Error('Raw IR timings must contain complete mark/space pairs');
+    }
+
+    const frame = [];
+    for (let offset = 0; offset < raw.length; offset += 2) {
+      const pair = [Math.abs(raw[offset]), Math.abs(raw[offset + 1])];
+      const match = this.findClosestIrWord(pair);
+      if (!match) {
+        throw new Error(
+          `Unsupported IR timing pair ${pair[0]}/${pair[1]} us at pair ${offset / 2}`,
+        );
+      }
+      frame.push(match.index);
+    }
+    return frame;
+  }
+
+  findClosestIrWord(pair) {
+    let best = null;
+
+    IR_WORDS.forEach((word, index) => {
+      const markError = Math.abs(pair[0] - word[0]) / word[0];
+      const spaceError = Math.abs(pair[1] - word[1]) / word[1];
+      if (markError > TIMING_TOLERANCE || spaceError > TIMING_TOLERANCE) return;
+
+      const score = markError + spaceError;
+      if (!best || score < best.score) best = { index, score };
+    });
+
+    return best;
   }
 
   rawToProntoHex(raw, carrier) {
