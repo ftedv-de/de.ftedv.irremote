@@ -44,6 +44,14 @@
       <span class="homey-form-checkbox-text" data-i18n="settings.debug_enable"></span>
     </label>
     <button class="homey-button-secondary-full" id="save-debug" data-i18n="settings.save"></button>
+
+    <hr>
+    <p class="hint" data-i18n="settings.ir_word_test_hint"></p>
+    <label class="homey-form-group">
+      <span class="homey-form-label" data-i18n="settings.ir_word_test_remote"></span>
+      <select class="homey-form-select" id="ir-word-test-device"></select>
+    </label>
+    <button class="homey-button-secondary-full" id="run-ir-word-test" data-i18n="settings.ir_word_test_run"></button>
   </section>
 
   <section class="panel">
@@ -62,11 +70,22 @@
     async function load() {
       var mqtt = await api('GET', '/mqtt');
       var debug = await api('GET', '/debug');
+      var remotes = await api('GET', '/remotes');
       document.getElementById('mqtt-url').value = mqtt.url || '';
       document.getElementById('mqtt-user').value = mqtt.username || '';
       document.getElementById('topic-learn').value = mqtt.topics.learn;
       document.getElementById('topic-received').value = mqtt.topics.received;
       document.getElementById('debug-enabled').checked = debug.enabled === true;
+
+      var select = document.getElementById('ir-word-test-device');
+      select.innerHTML = '';
+      remotes.forEach(function (remote) {
+        var option = document.createElement('option');
+        option.value = remote.id;
+        option.textContent = remote.name;
+        select.appendChild(option);
+      });
+      document.getElementById('run-ir-word-test').disabled = remotes.length === 0;
     }
 
     function onHomeyReady(Homey) {
@@ -94,6 +113,19 @@
             enabled: document.getElementById('debug-enabled').checked,
           });
           Homey.alert(Homey.__('settings.saved'));
+        } catch (error) {
+          Homey.alert(error.message || error, 'error');
+        }
+      };
+
+      document.getElementById('run-ir-word-test').onclick = async function () {
+        try {
+          var result = await api('POST', '/debug/ir-word-index', {
+            deviceId: document.getElementById('ir-word-test-device').value,
+          });
+          Homey.alert(Homey.__('settings.ir_word_test_success')
+            .replace('__index__', result.testedWordIndex)
+            .replace('__count__', result.wordCount));
         } catch (error) {
           Homey.alert(error.message || error, 'error');
         }
