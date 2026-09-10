@@ -1,0 +1,71 @@
+{
+  "id": "de.ftedv.irremote",
+  "version": "1.0.0",
+  "compatibility": ">=12.4.0",
+  "sdk": 3,
+  "runtime": "nodejs",
+  "platforms": [
+    "local"
+  ],
+  "name": {
+    "en": "IR Remote",
+    "de": "IR-Fernbedienung"
+  },
+  "description": {
+    "en": "Create, learn, control and back up your IR remotes",
+    "de": "IR-Fernbedienungen erstellen, anlernen, steuern und sichern"
+  },
+  "category": [
+    "tools"
+  ],
+  "permissions": [
+    "homey:manager:api"
+  ],
+  "api": {
+    "getRemotes": {
+      "method": "GET",
+      "path": "/remotes"
+    },
+    "addButton": {
+      "method": "POST",
+      "path": "/remotes/:deviceId/buttons"
+    },
+    "updateButton": {
+      "method": "PUT",
+      "path": "/remotes/:deviceId/buttons/:buttonId"
+    },
+    "deleteButton": {
+      "method": "DELETE",
+      "path": "/remotes/:deviceId/buttons/:buttonId"
+    },
+    "learnButton": {
+      "method": "POST",
+      "path": "/remotes/:deviceId/buttons/:buttonId/learn"
+    },
+    "sendButton": {
+      "method": "POST",
+      "path": "/remotes/:deviceId/buttons/:buttonId/send"
+    },
+    "getMqtt": {
+      "method": "GET",
+      "path": "/mqtt"
+    },
+    "setMqtt": {
+      "method": "PUT",
+      "path": "/mqtt"
+    },
+    "getExport": {
+      "method": "GET",
+      "path": "/export"
+    }
+  },
+  "images": {
+    "small": "/assets/images/small.png",
+    "large": "/assets/images/large.png",
+    "xlarge": "/assets/images/xlarge.png"
+  },
+  "author": {
+    "name": "Florian Trück",
+    "email": "ftrueck@gmail.com"
+  }
+}
