@@ -6,6 +6,7 @@ const IrCodeConverter = require('../lib/IrCodeConverter');
 const IrSignalEncoder = require('../lib/IrSignalEncoder');
 const wordIndexTestSignal64 = require('../.homeycompose/signals/ir/word_index_test_64.json');
 const wordIndexTestSignal256 = require('../.homeycompose/signals/ir/word_index_test_256.json');
+const wordIndexTestSignal512 = require('../.homeycompose/signals/ir/word_index_test_512.json');
 
 const encoder = new IrSignalEncoder({
   carrier: 38000,
@@ -66,4 +67,10 @@ test('256-word diagnostic signal exposes word index 255', () => {
   assert.equal(wordIndexTestSignal256.words.length, 256);
   assert.deepEqual(wordIndexTestSignal256.words[0], [4707, 4523]);
   assert.deepEqual(wordIndexTestSignal256.words[255], [605, 552]);
+});
+
+test('512-word diagnostic signal exposes word index 511', () => {
+  assert.equal(wordIndexTestSignal512.words.length, 512);
+  assert.deepEqual(wordIndexTestSignal512.words[0], [4707, 4523]);
+  assert.deepEqual(wordIndexTestSignal512.words[511], [605, 552]);
 });
