@@ -85,6 +85,13 @@ module.exports = {
     return { enabled: homey.app.isDebugEnabled() };
   },
 
+  async runIrWordIndexDiagnostic({ homey, body }) {
+    if (!body || typeof body.deviceId !== 'string' || !body.deviceId) {
+      throw new Error('Remote device is required');
+    }
+    return homey.app.sendIrWordIndexDiagnostic(body.deviceId);
+  },
+
   async getExport({ homey }) {
     return {
       schemaVersion: 1,
