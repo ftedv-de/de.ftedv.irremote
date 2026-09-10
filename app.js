@@ -42,41 +42,38 @@ module.exports = class IRRemoteApp extends Homey.App {
   async sendIR(code, repetitions = 1, device) {
     if (!device) throw new Error('A Homey device is required for IR satellite routing');
 
-    const client = this.homey.rf && this.homey.rf.__client;
-    if (!client || typeof client.emit !== 'function') {
-      throw new Error('Homey RF core client is unavailable');
-    }
+    // The known-good ProntoHex represents Samsung frame 0x3A8EC00B. For this
+    // probe it is represented as a regular Homey IR signal: SOF and EOF are
+    // fixed in the manifest, while each frame element selects words[0] or
+    // words[1]. This lets us exercise Signal.tx(frame, { device }) instead of
+    // the prontohex-only Signal.cmd() path.
+    const frame = [
+      0, 0, 1, 1, 1, 0, 1, 0,
+      1, 0, 0, 0, 1, 1, 1, 0,
+      1, 1, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 1, 0, 1, 1,
+    ];
 
-    // Diagnostic: this exact ProntoHex was proven to work when stored statically
-    // as the RUNTIME command in the Homey manifest.
-    const payload = '0000 006D 0022 0000 00B3 00AC 0017 0015 0017 0015 0017 0040 0017 0040 0017 0040 0017 0015 0017 0040 0017 0015 0017 0040 0017 0015 0017 0015 0017 0015 0017 0040 0017 0040 0017 0040 0017 0015 0017 0040 0017 0040 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0040 0017 0015 0017 0040 0017 0040 0016 0181';
-    const frame = payload.split(/\s+/).map((word) => Number.parseInt(word, 16));
-
-    const request = {
-      signalId: 'dynamic_ir',
-      frequency: 'ir',
-      opts: {
-        repetitions,
-        device,
-      },
-      frame,
-    };
+    const signal = this.homey.rf.getSignalInfrared('dynamic_raw_ir');
 
     this.log(
-      `=== RF TX REGISTERED PRONTO FRAME PROBE: repetitions=${repetitions}, frameWords=${frame.length} ===`,
+      `=== RF TX REGULAR IR PROBE: repetitions=${repetitions}, frameBits=${frame.length} ===`,
     );
-    this.log('Sending known working ProntoHex as 16-bit frame words through registered dynamic_ir signal');
+    this.log('Sending known working Samsung 0x3A8EC00B through regular IR Signal.tx with device routing');
 
     try {
-      const result = await client.emit('tx', request);
+      const result = await signal.tx(frame, {
+        repetitions,
+        device,
+      });
       this.log(
-        'registered Pronto tx frame probe succeeded',
+        'regular IR tx probe succeeded',
         typeof result === 'undefined' ? '<undefined>' : result,
       );
       return true;
     } catch (error) {
       const message = error && error.message ? error.message : String(error);
-      this.log(`registered Pronto tx frame probe rejected: ${message}`);
+      this.log(`regular IR tx probe rejected: ${message}`);
       throw error;
     }
   }
