@@ -4,6 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const IrCodeConverter = require('../lib/IrCodeConverter');
 const IrSignalEncoder = require('../lib/IrSignalEncoder');
+const wordIndexTestSignal = require('../.homeycompose/signals/ir/word_index_test_64.json');
 
 const encoder = new IrSignalEncoder({
   carrier: 38000,
@@ -17,7 +18,7 @@ const encoder = new IrSignalEncoder({
   carrierToleranceHz: 1500,
 });
 
-const ON_PRONTO = '0000 006D 0022 0000 00B3 00AC 0017 0015 0017 0015 0017 0040 0017 0040 0017 0040 0017 0015 0017 0040 0017 0015 0017 0040 0017 0015 0017 0015 0017 0015 0017 0040 0017 0040 0017 0040 0017 0015 0017 0040 0017 0040 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0040 0017 0015 0017 0040 0017 0040 0016 0181';
+const ON_PRONTO = '0000 006D 0022 0000 00B3 00AC 0017 0015 0017 0015 0017 0040 0017 0040 0017 0040 0017 0015 0017 0040 0017 0015 0017 0040 0017 0015 0017 0015 0017 0015 0017 0040 0017 0040 0017 0040 0017 0015 0017 0040 0017 0040 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0040 0017 0015 0017 0040 0017 0040 0016 0181';
 const OFF_PRONTO = '0000 006D 0022 0000 00B3 00AC 0017 0040 0017 0015 0017 0015 0017 0015 0017 0040 0017 0015 0017 0040 0017 0015 0017 0040 0017 0015 0017 0015 0017 0015 0017 0040 0017 0040 0017 0040 0017 0015 0017 0040 0017 0040 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0040 0017 0015 0017 0040 0017 0015 0017 0015 0017 0015 0017 0040 0017 0040 0016 0181';
 
 test('converts and encodes proven ON ProntoHex frame', () => {
@@ -52,4 +53,10 @@ test('rejects timings outside the registered word codebook', () => {
     () => encoder.timingsToFrame([4707, 4523, 900, 2500, 579, 10124]),
     /Unsupported IR timing pair/,
   );
+});
+
+test('64-word diagnostic signal exposes word index 63', () => {
+  assert.equal(wordIndexTestSignal.words.length, 64);
+  assert.deepEqual(wordIndexTestSignal.words[0], [4707, 4523]);
+  assert.deepEqual(wordIndexTestSignal.words[63], [605, 552]);
 });
