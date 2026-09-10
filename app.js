@@ -36,7 +36,6 @@ module.exports = class IRRemoteApp extends Homey.App {
     });
 
     this.log('IR Remote has been initialized');
-    this.logHomeyClientDiagnostics();
   }
 
   async onUninit() {
@@ -44,101 +43,17 @@ module.exports = class IRRemoteApp extends Homey.App {
   }
 
   /**
-   * Inspect the SDK classes that create and configure Homey's native manager
-   * clients. We already know RF __client.emit() only accepts whitelisted app
-   * events; this diagnostic looks for where that whitelist/routing is defined.
-   * No RF command is transmitted here.
-   */
-  logHomeyClientDiagnostics() {
-    try {
-      this.log('=== HOMEY CLIENT ROUTING DIAGNOSTICS ===');
-
-      this.log('Homey own properties:', Object.getOwnPropertyNames(this.homey));
-      if (this.homey.__client) {
-        this.log('Homey __client own properties:', Object.getOwnPropertyNames(this.homey.__client));
-      }
-
-      const rfClient = this.homey.rf && this.homey.rf.__client;
-      if (rfClient) {
-        this.log('RF __client own properties:', Object.getOwnPropertyNames(rfClient));
-        this.log('RF __client symbols:', Object.getOwnPropertySymbols(rfClient).map((symbol) => symbol.toString()));
-        this.log('RF __client descriptors:', this.describeObject(rfClient));
-      }
-
-      const wanted = [
-        '/lib/HomeyClient.js',
-        '/lib/Homey.js',
-        '/lib/SDK.js',
-        '/lib/Manager.js',
-        '/manager/rf.js',
-      ];
-
-      const entries = Object.values(require.cache || {}).filter((entry) => (
-        entry
-        && typeof entry.filename === 'string'
-        && wanted.some((suffix) => entry.filename.endsWith(suffix))
-      ));
-
-      this.log('Target SDK modules:', entries.map((entry) => entry.filename));
-
-      for (const entry of entries) {
-        this.log(`=== SDK EXPORT ${entry.filename} ===`);
-        const exported = entry.exports;
-        this.log('Export type:', typeof exported);
-        this.log('Export own properties:', exported ? Object.getOwnPropertyNames(exported) : []);
-
-        if (typeof exported === 'function') {
-          this.log(
-            'Export function source:',
-            Function.prototype.toString.call(exported).slice(0, 50000),
-          );
-
-          if (exported.prototype) {
-            const names = Object.getOwnPropertyNames(exported.prototype);
-            this.log(`Prototype methods for ${exported.name}:`, names);
-            for (const name of names) {
-              if (name === 'constructor') continue;
-              const value = exported.prototype[name];
-              if (typeof value !== 'function') continue;
-              this.log(
-                `${exported.name}.${name}():`,
-                Function.prototype.toString.call(value).slice(0, 20000),
-              );
-            }
-          }
-        }
-      }
-    } catch (error) {
-      this.error('Homey client routing diagnostics failed', error);
-    }
-  }
-
-  describeObject(object) {
-    const result = {};
-    for (const name of Object.getOwnPropertyNames(object)) {
-      try {
-        const descriptor = Object.getOwnPropertyDescriptor(object, name);
-        result[name] = {
-          enumerable: descriptor && descriptor.enumerable,
-          configurable: descriptor && descriptor.configurable,
-          writable: descriptor && descriptor.writable,
-          type: typeof object[name],
-          value: typeof object[name] === 'function'
-            ? Function.prototype.toString.call(object[name]).slice(0, 500)
-            : object[name],
-        };
-      } catch (error) {
-        result[name] = `<inspection failed: ${error.message}>`;
-      }
-    }
-    return result;
-  }
-
-  /**
-   * Dynamic ProntoHex + satellite routing is still unresolved. The previous
-   * probe established that guessed private RF event names are rejected before
-   * payload validation with "Invalid App Event". Keep sendIR non-transmitting
-   * until the actual allowed core event surface is identified.
+   * Safely probe Homey Core's validation of the real ManagerRF "tx" event.
+   *
+   * Signal.tx() is documented to accept an array of word indexes, not Pronto
+   * durations. Therefore this diagnostic deliberately sends an empty frame.
+   * It cannot represent a valid IR transmission; its purpose is only to learn
+   * whether Homey Core recognises the signal ID before validating the frame.
+   *
+   * We compare the former "dynamic_ir" ID with a guaranteed-missing ID. If
+   * Core returns different errors, the installed/core-side manifest still
+   * contains dynamic_ir. opts.device is retained so the request follows the
+   * exact satellite-routing path used by a real signal.tx() call.
    */
   async sendIR(code, repetitions = 1, device) {
     if (!device) throw new Error('A Homey device is required for IR satellite routing');
@@ -147,9 +62,56 @@ module.exports = class IRRemoteApp extends Homey.App {
       ? code.code
       : this.rawToProntoHex(code.code, code.carrier || 38000);
 
-    throw new Error(
-      `Dynamic ProntoHex satellite transmission is not yet available (repetitions=${repetitions}, words=${payload.split(/\s+/).length})`,
+    const client = this.homey.rf && this.homey.rf.__client;
+    if (!client || typeof client.emit !== 'function') {
+      throw new Error('Homey RF core client is unavailable');
+    }
+
+    const opts = {
+      repetitions,
+      device,
+    };
+
+    const probes = [
+      {
+        name: 'former dynamic_ir signal',
+        signalId: 'dynamic_ir',
+      },
+      {
+        name: 'guaranteed missing signal',
+        signalId: '__ftedv_missing_ir_signal__',
+      },
+    ];
+
+    this.log(
+      `=== RF TX VALIDATION PROBE: repetitions=${repetitions}, prontoWords=${payload.split(/\s+/).length} ===`,
     );
+    this.log('Diagnostic uses frame=[]; stored ProntoHex is NOT transmitted');
+
+    const results = [];
+
+    for (const probe of probes) {
+      this.log(`Trying tx validation probe: ${probe.name} (${probe.signalId})`);
+
+      try {
+        const result = await client.emit('tx', {
+          signalId: probe.signalId,
+          frequency: 'ir',
+          opts,
+          frame: [],
+        });
+
+        const rendered = typeof result === 'undefined' ? '<undefined>' : result;
+        this.log(`tx validation probe unexpectedly succeeded: ${probe.name}`, rendered);
+        results.push(`${probe.signalId}: success`);
+      } catch (error) {
+        const message = error && error.message ? error.message : String(error);
+        this.log(`tx validation probe rejected: ${probe.name}: ${message}`);
+        results.push(`${probe.signalId}: ${message}`);
+      }
+    }
+
+    throw new Error(`RF tx validation probe complete. ${results.join(' | ')}`);
   }
 
   rawToProntoHex(raw, carrier) {
