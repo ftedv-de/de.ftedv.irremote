@@ -19,7 +19,7 @@
     "tools"
   ],
   "permissions": [
-    "homey:manager:api"
+    "homey:wireless:ir"
   ],
   "api": {
     "getRemotes": {
