@@ -3,7 +3,6 @@ node_modules/
 
 # Homey build / generated files
 .homeybuild/
-.homeycompose/app.json
 
 # Environment / secrets
 .env
