@@ -4,9 +4,6 @@ const Homey = require('homey');
 const { randomUUID } = require('crypto');
 const MqttService = require('./lib/MqttService');
 
-const DYNAMIC_IR_SIGNAL_ID = 'dynamic_ir';
-const DYNAMIC_IR_COMMAND_ID = 'RUNTIME';
-
 module.exports = class IRRemoteApp extends Homey.App {
 
   /**
@@ -46,14 +43,9 @@ module.exports = class IRRemoteApp extends Homey.App {
   }
 
   /**
-   * Send an arbitrary IR code through Homey's native RF manager.
-   *
-   * Passing the Homey Device is important: Homey uses that context to route
-   * the transmission through the antenna/satellite selected for that device.
-   *
-   * Homey's public Apps SDK currently only documents static ProntoHex commands.
-   * The runtime manifest update below is intentionally isolated here so it can
-   * be replaced easily if Homey exposes a native dynamic ProntoHex API later.
+   * Dynamic ProntoHex transmission with satellite routing is not exposed by
+   * the public Apps SDK. Keep the device parameter here because Homey uses it
+   * for satellite routing on native signal.cmd()/signal.tx() calls.
    */
   async sendIR(code, repetitions = 1, device) {
     if (!device) throw new Error('A Homey device is required for IR satellite routing');
@@ -62,18 +54,9 @@ module.exports = class IRRemoteApp extends Homey.App {
       ? code.code
       : this.rawToProntoHex(code.code, code.carrier || 38000);
 
-    const signalManifest = Homey.manifest?.signals?.ir?.[DYNAMIC_IR_SIGNAL_ID];
-    if (!signalManifest || !signalManifest.cmds) {
-      throw new Error(`IR signal '${DYNAMIC_IR_SIGNAL_ID}' is missing from the app manifest`);
-    }
-
-    signalManifest.cmds[DYNAMIC_IR_COMMAND_ID] = payload;
-
-    const signal = this.homey.rf.getSignalInfrared(DYNAMIC_IR_SIGNAL_ID);
-    await signal.cmd(DYNAMIC_IR_COMMAND_ID, {
-      repetitions,
-      device,
-    });
+    throw new Error(
+      `Dynamic ProntoHex satellite transmission is not available through the public Apps SDK (repetitions=${repetitions}, words=${payload.split(/\\s+/).length})`,
+    );
   }
 
   rawToProntoHex(raw, carrier) {
