@@ -62,6 +62,10 @@
       "method": "PUT",
       "path": "/debug"
     },
+    "runIrWordIndexDiagnostic": {
+      "method": "POST",
+      "path": "/debug/ir-word-index"
+    },
     "getExport": {
       "method": "GET",
       "path": "/export"
