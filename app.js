@@ -50,33 +50,33 @@ module.exports = class IRRemoteApp extends Homey.App {
     // Diagnostic: this exact ProntoHex was proven to work when stored statically
     // as the RUNTIME command in the Homey manifest.
     const payload = '0000 006D 0022 0000 00B3 00AC 0017 0015 0017 0015 0017 0040 0017 0040 0017 0040 0017 0015 0017 0040 0017 0015 0017 0040 0017 0015 0017 0015 0017 0015 0017 0040 0017 0040 0017 0040 0017 0015 0017 0040 0017 0040 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0040 0017 0015 0017 0040 0017 0040 0016 0181';
+    const frame = payload.split(/\s+/).map((word) => Number.parseInt(word, 16));
 
     const request = {
       signalId: 'dynamic_ir',
       frequency: 'ir',
-      commandId: 'RUNTIME',
       opts: {
         repetitions,
         device,
-        payload,
       },
+      frame,
     };
 
     this.log(
-      `=== RF CMD OPTS.PAYLOAD PROBE: repetitions=${repetitions}, prontoWords=${payload.split(/\s+/).length} ===`,
+      `=== RF TX REGISTERED PRONTO FRAME PROBE: repetitions=${repetitions}, frameWords=${frame.length} ===`,
     );
-    this.log('Manifest RUNTIME contains neutral fallback; known working Samsung ProntoHex is supplied as opts.payload');
+    this.log('Sending known working ProntoHex as 16-bit frame words through registered dynamic_ir signal');
 
     try {
-      const result = await client.emit('cmd', request);
+      const result = await client.emit('tx', request);
       this.log(
-        'opts.payload probe succeeded',
+        'registered Pronto tx frame probe succeeded',
         typeof result === 'undefined' ? '<undefined>' : result,
       );
       return true;
     } catch (error) {
       const message = error && error.message ? error.message : String(error);
-      this.log(`opts.payload probe rejected: ${message}`);
+      this.log(`registered Pronto tx frame probe rejected: ${message}`);
       throw error;
     }
   }
