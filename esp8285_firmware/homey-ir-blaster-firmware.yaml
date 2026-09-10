@@ -1,0 +1,102 @@
+esphome:
+  name: homey-ir-blaster
+  friendly_name: homey-ir-blaster
+  comment: "Homey IR Blaster for learning remotes"
+  name_add_mac_suffix: false
+
+esp8266:
+  board: esp8285
+
+logger:
+
+api:
+  encryption:
+    key: !secret homey-ir-blaster__api_key
+
+ota:
+  - platform: esphome
+    password: !secret homey-ir-blaster__ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  min_auth_mode: WPA2
+
+  ap:
+    ssid: "homey-ir-blaster Hotspot"
+    password: !secret homey-ir-blaster__fallback_password
+
+captive_portal:
+
+globals:
+  # Leere ID = momentan kein Lernvorgang aktiv
+  - id: ir_learn_request_id
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+
+mqtt:
+  id: mqtt_client
+  broker: !secret mqtt_broker
+  username: !secret mqtt_username
+  password: !secret mqtt_password
+
+  on_json_message:
+    - topic: homey/ir/learn
+      qos: 1
+      then:
+        - lambda: |-
+            if (!x["requestId"].is<const char *>()) {
+              ESP_LOGW("ir_learn", "Learn request without requestId");
+              return;
+            }
+
+            id(ir_learn_request_id) = x["requestId"].as<std::string>();
+
+            ESP_LOGI(
+              "ir_learn",
+              "Learning started, requestId=%s",
+              id(ir_learn_request_id).c_str()
+            );
+
+remote_receiver:
+  id: ir_receiver
+  pin:
+    number: GPIO14
+    inverted: true
+
+  dump:
+    - pronto
+
+  on_pronto:
+    then:
+      - if:
+          condition:
+            lambda: |-
+              return !id(ir_learn_request_id).empty();
+
+          then:
+            - mqtt.publish_json:
+                topic: homey/ir/received
+                qos: 1
+                retain: false
+                payload: |-
+                  root["requestId"] = id(ir_learn_request_id);
+                  root["format"] = "pronto";
+                  root["code"] = x.data;
+
+            - lambda: |-
+                ESP_LOGI(
+                  "ir_learn",
+                  "Learned Pronto code for requestId=%s",
+                  id(ir_learn_request_id).c_str()
+                );
+
+                // Nur genau das nächste IR-Signal gehört
+                // zu diesem Lernauftrag.
+                id(ir_learn_request_id).clear();
+
+remote_transmitter:
+  id: ir_transmitter
+  pin: GPIO4
+  carrier_duty_percent: 50%
