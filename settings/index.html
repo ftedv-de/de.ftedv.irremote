@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script type="text/javascript" src="/homey.js" data-origin="settings"></script>
+  <style>
+    :root { --ink: #17202a; --muted: #68727d; --line: #dfe4e8; --accent: #d64a2f; }
+    body { color: var(--ink); padding-bottom: 48px; }
+    .hero { border-left: 5px solid var(--accent); padding-left: 16px; margin-bottom: 28px; }
+    .hero p { color: var(--muted); margin: 6px 0 0; }
+    .panel { border: 1px solid var(--line); border-radius: 12px; padding: 18px; margin-bottom: 18px; }
+    .panel h2 { margin-top: 0; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .wide { grid-column: 1 / -1; }
+    @media (max-width: 620px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <h1 data-i18n="settings.title"></h1>
+    <p data-i18n="settings.global_subtitle"></p>
+  </header>
+
+  <section class="panel">
+    <h2 data-i18n="settings.mqtt_title"></h2>
+    <div class="grid">
+      <label class="homey-form-group wide"><span class="homey-form-label">Broker URL</span><input class="homey-form-input" id="mqtt-url" placeholder="mqtt://192.168.1.20:1883"></label>
+      <label class="homey-form-group"><span class="homey-form-label" data-i18n="settings.username"></span><input class="homey-form-input" id="mqtt-user"></label>
+      <label class="homey-form-group"><span class="homey-form-label" data-i18n="settings.password"></span><input class="homey-form-input" id="mqtt-password" type="password"></label>
+      <label class="homey-form-group"><span class="homey-form-label">Learn Topic</span><input class="homey-form-input" id="topic-learn"></label>
+      <label class="homey-form-group"><span class="homey-form-label">Received Topic</span><input class="homey-form-input" id="topic-received"></label>
+    </div>
+    <button class="homey-button-primary-full" id="save-mqtt" data-i18n="settings.save"></button>
+  </section>
+
+  <section class="panel">
+    <h2 data-i18n="settings.backup"></h2>
+    <p data-i18n="settings.import_hint"></p>
+    <button class="homey-button-secondary-full" id="export" data-i18n="settings.export"></button>
+  </section>
+
+  <script>
+    var HomeyApi;
+
+    function api(method, path, body) {
+      return HomeyApi.api(method, path, body || null);
+    }
+
+    async function load() {
+      var mqtt = await api('GET', '/mqtt');
+      document.getElementById('mqtt-url').value = mqtt.url || '';
+      document.getElementById('mqtt-user').value = mqtt.username || '';
+      document.getElementById('topic-learn').value = mqtt.topics.learn;
+      document.getElementById('topic-received').value = mqtt.topics.received;
+    }
+
+    function onHomeyReady(Homey) {
+      HomeyApi = Homey;
+      document.getElementById('save-mqtt').onclick = async function () {
+        try {
+          await api('PUT', '/mqtt', {
+            url: document.getElementById('mqtt-url').value,
+            username: document.getElementById('mqtt-user').value,
+            password: document.getElementById('mqtt-password').value,
+            topics: {
+              learn: document.getElementById('topic-learn').value,
+              received: document.getElementById('topic-received').value,
+            },
+          });
+          Homey.alert(Homey.__('settings.saved'));
+        } catch (error) {
+          Homey.alert(error.message || error, 'error');
+        }
+      };
+
+      document.getElementById('export').onclick = async function () {
+        try {
+          var data = await api('GET', '/export');
+          var url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+          var link = document.createElement('a');
+          link.href = url;
+          link.download = 'homey-ir-remotes.json';
+          link.click();
+          URL.revokeObjectURL(url);
+        } catch (error) {
+          Homey.alert(error.message || error, 'error');
+        }
+      };
+
+      load().then(function () {
+        Homey.ready();
+      }).catch(function (error) {
+        Homey.alert(error.message || error, 'error');
+        Homey.ready();
+      });
+    }
+  </script>
+</body>
+</html>

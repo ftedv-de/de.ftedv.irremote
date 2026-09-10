@@ -1,0 +1,25 @@
+{
+  "title": {
+    "en": "Send [[button]] with [[device]]",
+    "de": "Sende [[button]] mit [[device]]"
+  },
+  "titleFormatted": {
+    "en": "Send [[button]]",
+    "de": "Sende [[button]]"
+  },
+  "args": [
+    {
+      "name": "device",
+      "type": "device",
+      "filter": "driver_id=ir_remote"
+    },
+    {
+      "name": "button",
+      "type": "autocomplete",
+      "title": {
+        "en": "Button",
+        "de": "Taste"
+      }
+    }
+  ]
+}

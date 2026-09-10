@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root { --muted: #68727d; --line: #dfe4e8; }
+    body { padding-bottom: 32px; }
+    .intro { color: var(--muted); margin-bottom: 24px; }
+    .button-row { border-top: 1px solid var(--line); padding: 16px 0; }
+    .grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 80px; gap: 8px; }
+    .code-editor { margin-top: 8px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .state { font-size: 12px; margin-top: 6px; }
+    .learned { color: #19713d; }
+    .missing { color: #a13a29; }
+    .add-panel { border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin: 20px 0; }
+    @media (max-width: 520px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <p class="intro" data-i18n="repair.subtitle"></p>
+  <p class="intro" data-i18n="repair.transmitter_notice"></p>
+  <div id="buttons"></div>
+
+  <section class="add-panel">
+    <fieldset class="homey-form-fieldset">
+      <legend class="homey-form-legend" data-i18n="settings.add_button"></legend>
+      <div class="grid">
+        <label class="homey-form-group">
+          <span class="homey-form-label" data-i18n="settings.button_name"></span>
+          <input class="homey-form-input" id="new-name" maxlength="80">
+        </label>
+        <label class="homey-form-group">
+          <span class="homey-form-label" data-i18n="settings.button_type"></span>
+          <select class="homey-form-select" id="new-type"></select>
+        </label>
+      </div>
+    </fieldset>
+    <button class="homey-button-primary-full" id="add" data-i18n="settings.add_button"></button>
+  </section>
+
+  <button class="homey-button-secondary-full" id="close" data-i18n="repair.close"></button>
+
+  <script>
+    var buttonTypes = ['custom', 'switch_on', 'switch_off', 'switch_toggle', 'dim_up', 'dim_down', 'channel_up', 'channel_down', 'mute', 'input', 'number'];
+
+    function optionList(selected) {
+      return buttonTypes.map(function (type) {
+        return '<option value="' + type + '"' + (selected === type ? ' selected' : '') + '>' + Homey.__('types.' + type) + '</option>';
+      }).join('');
+    }
+
+    function codeFromInput(value) {
+      value = value.trim();
+      if (!value) return null;
+      return value.charAt(0) === '['
+        ? { format: 'raw', code: JSON.parse(value) }
+        : { format: 'pronto', code: value };
+    }
+
+    function createAction(label, handler) {
+      var element = document.createElement('button');
+      element.className = 'homey-button-small';
+      element.textContent = label;
+      element.onclick = async function () {
+        element.disabled = true;
+        try {
+          await handler();
+        } catch (error) {
+          await Homey.alert(error.message || error, 'error');
+        } finally {
+          element.disabled = false;
+        }
+      };
+      return element;
+    }
+
+    function render(buttons) {
+      var container = document.getElementById('buttons');
+      container.innerHTML = '';
+      if (!buttons.length) {
+        container.innerHTML = '<p class="intro">' + Homey.__('repair.no_buttons') + '</p>';
+        return;
+      }
+
+      buttons.forEach(function (button) {
+        var row = document.createElement('article');
+        row.className = 'button-row';
+        row.innerHTML = '<div class="grid">'
+          + '<label class="homey-form-group"><span class="homey-form-label">' + Homey.__('settings.button_name') + '</span><input class="homey-form-input name" maxlength="80"></label>'
+          + '<label class="homey-form-group"><span class="homey-form-label">' + Homey.__('settings.button_type') + '</span><select class="homey-form-select type">' + optionList(button.type) + '</select></label>'
+          + '<label class="homey-form-group"><span class="homey-form-label">' + Homey.__('repair.repetitions') + '</span><input class="homey-form-input repetitions" type="number" min="1" max="20"></label>'
+          + '</div>'
+          + '<label class="homey-form-group code-editor"><span class="homey-form-label">' + Homey.__('settings.code') + '</span><textarea class="homey-form-textarea code" rows="3"></textarea></label>'
+          + '<div class="state ' + (button.code ? 'learned' : 'missing') + '">' + Homey.__(button.code ? 'settings.learned' : 'settings.not_learned') + '</div>'
+          + '<div class="actions"></div>';
+
+        row.querySelector('.name').value = button.name;
+        row.querySelector('.repetitions').value = button.repetitions || 1;
+        row.querySelector('.code').value = button.code
+          ? (button.code.format === 'raw' ? JSON.stringify(button.code.code) : button.code.code)
+          : '';
+
+        var actions = row.querySelector('.actions');
+        actions.appendChild(createAction(Homey.__('settings.save'), async function () {
+          render(await Homey.emit('update_button', {
+            id: button.id,
+            name: row.querySelector('.name').value,
+            type: row.querySelector('.type').value,
+            repetitions: Number(row.querySelector('.repetitions').value),
+            code: codeFromInput(row.querySelector('.code').value),
+          }));
+        }));
+        actions.appendChild(createAction(Homey.__('settings.learn'), async function () {
+          await Homey.alert(Homey.__('settings.press_remote'));
+          Homey.showLoadingOverlay();
+          try {
+            render(await Homey.emit('learn_button', button.id));
+          } finally {
+            Homey.hideLoadingOverlay();
+          }
+        }));
+        actions.appendChild(createAction(Homey.__('settings.test'), async function () {
+          await Homey.emit('send_button', button.id);
+        }));
+        actions.appendChild(createAction(Homey.__('settings.delete'), async function () {
+          if (await Homey.confirm(Homey.__('settings.confirm_delete'), 'warning')) {
+            render(await Homey.emit('delete_button', button.id));
+          }
+        }));
+        container.appendChild(row);
+      });
+    }
+
+    document.getElementById('new-type').innerHTML = optionList('custom');
+    document.getElementById('add').onclick = async function () {
+      try {
+        var buttons = await Homey.emit('add_button', {
+          name: document.getElementById('new-name').value,
+          type: document.getElementById('new-type').value,
+          repetitions: 1,
+        });
+        document.getElementById('new-name').value = '';
+        render(buttons);
+      } catch (error) {
+        await Homey.alert(error.message || error, 'error');
+      }
+    };
+    document.getElementById('close').onclick = function () { Homey.done(); };
+
+    Homey.emit('get_remote').then(function (remote) {
+      Homey.setTitle(remote.name);
+      render(remote.buttons);
+    }).catch(function (error) {
+      Homey.alert(error.message || error, 'error');
+    });
+  </script>
+</body>
+</html>

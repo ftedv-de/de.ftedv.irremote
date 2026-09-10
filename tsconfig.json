@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
+    "module": "commonjs",
+    "target": "ES2021"
+  },
+  "include": [
+    "*.js",
+    "drivers/**/*.js",
+    "lib/**/*.js"
+  ]
+}

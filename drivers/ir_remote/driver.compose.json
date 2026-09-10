@@ -1,0 +1,27 @@
+{
+  "name": {
+    "en": "IR Remote",
+    "de": "IR-Fernbedienung"
+  },
+  "class": "remote",
+  "connectivity": ["infrared"],
+  "capabilities": [],
+  "infrared": {
+    "satelliteMode": true
+  },
+  "images": {
+    "small": "/assets/images/small.png",
+    "large": "/assets/images/large.png",
+    "xlarge": "/assets/images/xlarge.png"
+  },
+  "pair": [
+    {
+      "id": "configure"
+    }
+  ],
+  "repair": [
+    {
+      "id": "manage_buttons"
+    }
+  ]
+}
