@@ -1,6 +1,5 @@
 'use strict';
 
-const fs = require('fs');
 const Homey = require('homey');
 const { randomUUID } = require('crypto');
 const MqttService = require('./lib/MqttService');
@@ -37,7 +36,6 @@ module.exports = class IRRemoteApp extends Homey.App {
     });
 
     this.log('IR Remote has been initialized');
-    this.logRfDiagnostics();
   }
 
   async onUninit() {
@@ -45,151 +43,13 @@ module.exports = class IRRemoteApp extends Homey.App {
   }
 
   /**
-   * Inspect the RF manager plus the actual SDK modules loaded inside the Homey
-   * app process. This lets us trace the private app->core RF RPC without
-   * guessing event names or transmitting anything.
-   */
-  logRfDiagnostics() {
-    try {
-      const rf = this.homey.rf;
-
-      this.log('=== RF MANAGER DIAGNOSTICS ===');
-      this.log('RF own properties:', Object.getOwnPropertyNames(rf));
-      this.logPrototypeChain('RF manager', rf);
-
-      for (const methodName of [
-        'tx',
-        'cmd',
-        '_getSignalDefinition',
-        '_validateSignal',
-        'getSignalInfrared',
-      ]) {
-        const method = rf[methodName];
-        if (typeof method === 'function') {
-          this.log(
-            `RF manager ${methodName}():`,
-            Function.prototype.toString.call(method).slice(0, 12000),
-          );
-        }
-      }
-
-      this.log('=== RF CLIENT DIAGNOSTICS ===');
-      const client = rf.__client;
-      if (client) {
-        this.log('RF __client own properties:', Object.getOwnPropertyNames(client));
-        this.logPrototypeChain('RF __client', client, true);
-      } else {
-        this.log('RF __client is not available');
-      }
-
-      this.logHomeySdkSources();
-    } catch (error) {
-      this.error('RF runtime diagnostics failed', error);
-    }
-  }
-
-  logHomeySdkSources() {
-    this.log('=== HOMEY SDK SOURCE DIAGNOSTICS ===');
-
-    try {
-      this.log('require.resolve("homey"):', require.resolve('homey'));
-    } catch (error) {
-      this.log('Could not resolve app-facing Homey entry:', error.message);
-    }
-
-    const cacheEntries = Object.values(require.cache || {});
-    this.log('require.cache entry count:', cacheEntries.length);
-
-    const sdkEntries = cacheEntries.filter((moduleEntry) => {
-      const filename = moduleEntry && moduleEntry.filename;
-      return typeof filename === 'string'
-        && (/homey-apps-sdk-v3/i.test(filename)
-          || /[/\\]manager[/\\]rf(?:[/\\]|\.js$)/i.test(filename)
-          || /signal.*infrared/i.test(filename));
-    });
-
-    this.log('Loaded SDK/RF module filenames:', sdkEntries.map((entry) => entry.filename));
-
-    const interestingEntries = sdkEntries.filter((entry) => /(?:manager[/\\]rf\.js|signal|infrared)/i.test(entry.filename));
-
-    for (const entry of interestingEntries) {
-      const filename = entry.filename;
-      this.log(`=== LOADED MODULE ${filename} ===`);
-
-      try {
-        if (fs.existsSync(filename)) {
-          this.log(fs.readFileSync(filename, 'utf8').slice(0, 60000));
-        } else {
-          this.log('Loaded module filename is not directly readable from app filesystem');
-        }
-      } catch (error) {
-        this.log(`Could not read ${filename}:`, error.message);
-      }
-
-      if (entry.exports) {
-        try {
-          const exported = entry.exports;
-          this.log('Export type:', typeof exported);
-          this.log('Export own properties:', Object.getOwnPropertyNames(exported));
-          if (typeof exported === 'function') {
-            this.log('Export function source:', Function.prototype.toString.call(exported).slice(0, 30000));
-            if (exported.prototype) {
-              this.logPrototypeChain(`Export ${exported.name || '<anonymous>'}`, exported.prototype, true);
-            }
-          } else if (typeof exported === 'object') {
-            this.logPrototypeChain(`Export ${filename}`, exported, true);
-          }
-        } catch (error) {
-          this.log(`Could not inspect exports for ${filename}:`, error.message);
-        }
-      }
-    }
-
-    if (interestingEntries.length === 0) {
-      this.log('No RF/Signal SDK modules were visible in require.cache');
-    }
-  }
-
-  logPrototypeChain(label, object, includeFunctions = false) {
-    let current = object;
-    let level = 0;
-
-    while (current && level < 10) {
-      const constructorName = current.constructor?.name || '<unknown>';
-      const propertyNames = Object.getOwnPropertyNames(current);
-
-      this.log(`${label} prototype ${level} (${constructorName}):`, propertyNames);
-
-      if (includeFunctions) {
-        for (const propertyName of propertyNames) {
-          if (propertyName === 'constructor') continue;
-
-          let value;
-          try {
-            value = current[propertyName];
-          } catch (error) {
-            this.log(`${label}.${propertyName}: <getter threw: ${error.message}>`);
-            continue;
-          }
-
-          if (typeof value === 'function') {
-            this.log(
-              `${label}.${propertyName}():`,
-              Function.prototype.toString.call(value).slice(0, 12000),
-            );
-          }
-        }
-      }
-
-      current = Object.getPrototypeOf(current);
-      level += 1;
-    }
-  }
-
-  /**
-   * Dynamic ProntoHex transmission with satellite routing is not exposed by
-   * the public Apps SDK. Keep the device parameter here because Homey uses it
-   * for satellite routing on native signal.cmd()/signal.tx() calls.
+   * Probe Homey's private app->core RF request channel for a dynamic ProntoHex
+   * operation that still accepts the normal Apps SDK device routing context.
+   *
+   * The public Apps SDK only exposes cmd()/tx() for manifest-defined signals,
+   * while the Web API exposes dynamic ProntoHex without a device option. The
+   * normal RF cmd()/tx() implementation forwards opts.device unchanged to the
+   * Homey Core transport, so these probes use that same shape.
    */
   async sendIR(code, repetitions = 1, device) {
     if (!device) throw new Error('A Homey device is required for IR satellite routing');
@@ -198,9 +58,60 @@ module.exports = class IRRemoteApp extends Homey.App {
       ? code.code
       : this.rawToProntoHex(code.code, code.carrier || 38000);
 
-    throw new Error(
-      `Dynamic ProntoHex satellite transmission is not available through the public Apps SDK (repetitions=${repetitions}, words=${payload.split(/\s+/).length})`,
+    const client = this.homey.rf && this.homey.rf.__client;
+    if (!client || typeof client.emit !== 'function') {
+      throw new Error('Homey RF core client is unavailable');
+    }
+
+    const opts = {
+      repetitions,
+      device,
+    };
+
+    const probes = [
+      {
+        name: 'txInfraredProntohex(opts.device)',
+        event: 'txInfraredProntohex',
+        data: { payload, repetitions, opts },
+      },
+      {
+        name: 'prontohex(opts.device)',
+        event: 'prontohex',
+        data: { payload, repetitions, opts },
+      },
+      {
+        name: 'ir/prontohex(opts.device)',
+        event: 'ir/prontohex',
+        data: { payload, repetitions, opts },
+      },
+      {
+        name: 'txProntohex(opts.device)',
+        event: 'txProntohex',
+        data: { payload, repetitions, opts },
+      },
+    ];
+
+    this.log(
+      `=== DYNAMIC IR CORE PROBE: repetitions=${repetitions}, words=${payload.split(/\s+/).length} ===`,
     );
+
+    const failures = [];
+
+    for (const probe of probes) {
+      this.log(`Trying RF core request: ${probe.name}`);
+
+      try {
+        const result = await client.emit(probe.event, probe.data);
+        this.log(`RF core request succeeded: ${probe.name}`, result);
+        return result;
+      } catch (error) {
+        const message = error && error.message ? error.message : String(error);
+        failures.push(`${probe.name}: ${message}`);
+        this.log(`RF core request rejected: ${probe.name}: ${message}`);
+      }
+    }
+
+    throw new Error(`No dynamic IR core request was accepted. ${failures.join(' | ')}`);
   }
 
   rawToProntoHex(raw, carrier) {
