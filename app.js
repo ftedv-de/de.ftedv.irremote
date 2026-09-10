@@ -36,6 +36,7 @@ module.exports = class IRRemoteApp extends Homey.App {
     });
 
     this.log('IR Remote has been initialized');
+    this.logHomeyClientDiagnostics();
   }
 
   async onUninit() {
@@ -43,13 +44,101 @@ module.exports = class IRRemoteApp extends Homey.App {
   }
 
   /**
-   * Probe Homey's private app->core RF request channel for a dynamic ProntoHex
-   * operation that still accepts the normal Apps SDK device routing context.
-   *
-   * The public Apps SDK only exposes cmd()/tx() for manifest-defined signals,
-   * while the Web API exposes dynamic ProntoHex without a device option. The
-   * normal RF cmd()/tx() implementation forwards opts.device unchanged to the
-   * Homey Core transport, so these probes use that same shape.
+   * Inspect the SDK classes that create and configure Homey's native manager
+   * clients. We already know RF __client.emit() only accepts whitelisted app
+   * events; this diagnostic looks for where that whitelist/routing is defined.
+   * No RF command is transmitted here.
+   */
+  logHomeyClientDiagnostics() {
+    try {
+      this.log('=== HOMEY CLIENT ROUTING DIAGNOSTICS ===');
+
+      this.log('Homey own properties:', Object.getOwnPropertyNames(this.homey));
+      if (this.homey.__client) {
+        this.log('Homey __client own properties:', Object.getOwnPropertyNames(this.homey.__client));
+      }
+
+      const rfClient = this.homey.rf && this.homey.rf.__client;
+      if (rfClient) {
+        this.log('RF __client own properties:', Object.getOwnPropertyNames(rfClient));
+        this.log('RF __client symbols:', Object.getOwnPropertySymbols(rfClient).map((symbol) => symbol.toString()));
+        this.log('RF __client descriptors:', this.describeObject(rfClient));
+      }
+
+      const wanted = [
+        '/lib/HomeyClient.js',
+        '/lib/Homey.js',
+        '/lib/SDK.js',
+        '/lib/Manager.js',
+        '/manager/rf.js',
+      ];
+
+      const entries = Object.values(require.cache || {}).filter((entry) => (
+        entry
+        && typeof entry.filename === 'string'
+        && wanted.some((suffix) => entry.filename.endsWith(suffix))
+      ));
+
+      this.log('Target SDK modules:', entries.map((entry) => entry.filename));
+
+      for (const entry of entries) {
+        this.log(`=== SDK EXPORT ${entry.filename} ===`);
+        const exported = entry.exports;
+        this.log('Export type:', typeof exported);
+        this.log('Export own properties:', exported ? Object.getOwnPropertyNames(exported) : []);
+
+        if (typeof exported === 'function') {
+          this.log(
+            'Export function source:',
+            Function.prototype.toString.call(exported).slice(0, 50000),
+          );
+
+          if (exported.prototype) {
+            const names = Object.getOwnPropertyNames(exported.prototype);
+            this.log(`Prototype methods for ${exported.name}:`, names);
+            for (const name of names) {
+              if (name === 'constructor') continue;
+              const value = exported.prototype[name];
+              if (typeof value !== 'function') continue;
+              this.log(
+                `${exported.name}.${name}():`,
+                Function.prototype.toString.call(value).slice(0, 20000),
+              );
+            }
+          }
+        }
+      }
+    } catch (error) {
+      this.error('Homey client routing diagnostics failed', error);
+    }
+  }
+
+  describeObject(object) {
+    const result = {};
+    for (const name of Object.getOwnPropertyNames(object)) {
+      try {
+        const descriptor = Object.getOwnPropertyDescriptor(object, name);
+        result[name] = {
+          enumerable: descriptor && descriptor.enumerable,
+          configurable: descriptor && descriptor.configurable,
+          writable: descriptor && descriptor.writable,
+          type: typeof object[name],
+          value: typeof object[name] === 'function'
+            ? Function.prototype.toString.call(object[name]).slice(0, 500)
+            : object[name],
+        };
+      } catch (error) {
+        result[name] = `<inspection failed: ${error.message}>`;
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Dynamic ProntoHex + satellite routing is still unresolved. The previous
+   * probe established that guessed private RF event names are rejected before
+   * payload validation with "Invalid App Event". Keep sendIR non-transmitting
+   * until the actual allowed core event surface is identified.
    */
   async sendIR(code, repetitions = 1, device) {
     if (!device) throw new Error('A Homey device is required for IR satellite routing');
@@ -58,60 +147,9 @@ module.exports = class IRRemoteApp extends Homey.App {
       ? code.code
       : this.rawToProntoHex(code.code, code.carrier || 38000);
 
-    const client = this.homey.rf && this.homey.rf.__client;
-    if (!client || typeof client.emit !== 'function') {
-      throw new Error('Homey RF core client is unavailable');
-    }
-
-    const opts = {
-      repetitions,
-      device,
-    };
-
-    const probes = [
-      {
-        name: 'txInfraredProntohex(opts.device)',
-        event: 'txInfraredProntohex',
-        data: { payload, repetitions, opts },
-      },
-      {
-        name: 'prontohex(opts.device)',
-        event: 'prontohex',
-        data: { payload, repetitions, opts },
-      },
-      {
-        name: 'ir/prontohex(opts.device)',
-        event: 'ir/prontohex',
-        data: { payload, repetitions, opts },
-      },
-      {
-        name: 'txProntohex(opts.device)',
-        event: 'txProntohex',
-        data: { payload, repetitions, opts },
-      },
-    ];
-
-    this.log(
-      `=== DYNAMIC IR CORE PROBE: repetitions=${repetitions}, words=${payload.split(/\s+/).length} ===`,
+    throw new Error(
+      `Dynamic ProntoHex satellite transmission is not yet available (repetitions=${repetitions}, words=${payload.split(/\s+/).length})`,
     );
-
-    const failures = [];
-
-    for (const probe of probes) {
-      this.log(`Trying RF core request: ${probe.name}`);
-
-      try {
-        const result = await client.emit(probe.event, probe.data);
-        this.log(`RF core request succeeded: ${probe.name}`, result);
-        return result;
-      } catch (error) {
-        const message = error && error.message ? error.message : String(error);
-        failures.push(`${probe.name}: ${message}`);
-        this.log(`RF core request rejected: ${probe.name}: ${message}`);
-      }
-    }
-
-    throw new Error(`No dynamic IR core request was accepted. ${failures.join(' | ')}`);
   }
 
   rawToProntoHex(raw, carrier) {
