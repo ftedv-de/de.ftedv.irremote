@@ -6,9 +6,6 @@ const MqttService = require('./lib/MqttService');
 
 module.exports = class IRRemoteApp extends Homey.App {
 
-  /**
-   * onInit is called when the app is initialized.
-   */
   async onInit() {
     this.mqtt = new MqttService(this);
     await this.mqtt.init().catch((error) => this.error('MQTT initialization failed', error));
@@ -42,24 +39,19 @@ module.exports = class IRRemoteApp extends Homey.App {
     await this.mqtt.destroy();
   }
 
-  /**
-   * Compare the accepted ManagerRF "cmd" request with and without an extra
-   * dynamic ProntoHex payload. This separates a bad manifest fallback from a
-   * payload-related Core rejection.
-   */
   async sendIR(code, repetitions = 1, device) {
     if (!device) throw new Error('A Homey device is required for IR satellite routing');
-
-    const payload = code.format === 'pronto'
-      ? code.code
-      : this.rawToProntoHex(code.code, code.carrier || 38000);
 
     const client = this.homey.rf && this.homey.rf.__client;
     if (!client || typeof client.emit !== 'function') {
       throw new Error('Homey RF core client is unavailable');
     }
 
-    const baseRequest = {
+    // Diagnostic: this exact ProntoHex was proven to work when stored statically
+    // as the RUNTIME command in the Homey manifest.
+    const payload = '0000 006D 0022 0000 00B3 00AC 0017 0015 0017 0015 0017 0040 0017 0040 0017 0040 0017 0015 0017 0040 0017 0015 0017 0040 0017 0015 0017 0015 0017 0015 0017 0040 0017 0040 0017 0040 0017 0015 0017 0040 0017 0040 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0040 0017 0015 0017 0040 0017 0040 0016 0181';
+
+    const request = {
       signalId: 'dynamic_ir',
       frequency: 'ir',
       commandId: 'RUNTIME',
@@ -67,49 +59,26 @@ module.exports = class IRRemoteApp extends Homey.App {
         repetitions,
         device,
       },
+      payload,
     };
 
     this.log(
-      `=== RF CMD PAYLOAD A/B PROBE: repetitions=${repetitions}, prontoWords=${payload.split(/\s+/).length} ===`,
+      `=== RF CMD DYNAMIC OVERRIDE PROBE: repetitions=${repetitions}, prontoWords=${payload.split(/\s+/).length} ===`,
     );
-    this.log(`LEARNED PRONTO PAYLOAD: ${payload}`);
-    this.log('A = registered RUNTIME command only; B = same request plus learned top-level payload');
+    this.log('Manifest RUNTIME contains neutral fallback; top-level payload contains known working Samsung code');
 
-    const results = [];
-    let hadFailure = false;
-
-    for (const probe of [
-      {
-        name: 'A: manifest command only',
-        request: baseRequest,
-      },
-      {
-        name: 'B: manifest command + dynamic payload',
-        request: {
-          ...baseRequest,
-          payload,
-        },
-      },
-    ]) {
-      this.log(`Trying ${probe.name}`);
-      try {
-        const result = await client.emit('cmd', probe.request);
-        this.log(
-          `${probe.name} succeeded`,
-          typeof result === 'undefined' ? '<undefined>' : result,
-        );
-        results.push(`${probe.name}: success`);
-      } catch (error) {
-        const message = error && error.message ? error.message : String(error);
-        this.log(`${probe.name} rejected: ${message}`);
-        results.push(`${probe.name}: ${message}`);
-        hadFailure = true;
-      }
+    try {
+      const result = await client.emit('cmd', request);
+      this.log(
+        'Dynamic override probe succeeded',
+        typeof result === 'undefined' ? '<undefined>' : result,
+      );
+      return true;
+    } catch (error) {
+      const message = error && error.message ? error.message : String(error);
+      this.log(`Dynamic override probe rejected: ${message}`);
+      throw error;
     }
-
-    this.log(`RF cmd payload A/B probe complete. ${results.join(' | ')}`);
-
-    return !hadFailure;
   }
 
   rawToProntoHex(raw, carrier) {
