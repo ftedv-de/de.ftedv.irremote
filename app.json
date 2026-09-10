@@ -20,7 +20,7 @@
     "tools"
   ],
   "permissions": [
-    "homey:manager:api"
+    "homey:wireless:ir"
   ],
   "api": {
     "getRemotes": {
@@ -68,6 +68,16 @@
   "author": {
     "name": "Florian Trück",
     "email": "ftrueck@gmail.com"
+  },
+  "signals": {
+    "ir": {
+      "dynamic_ir": {
+        "type": "prontohex",
+        "cmds": {
+          "RUNTIME": "0000 006D 0001 0000 0001 0001"
+        }
+      }
+    }
   },
   "flow": {
     "actions": [
