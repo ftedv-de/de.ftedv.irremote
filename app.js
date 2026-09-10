@@ -44,33 +44,44 @@ module.exports = class IRRemoteApp extends Homey.App {
   }
 
   /**
-   * Dump the Apps SDK RF/IR runtime surface so we can inspect how signal.cmd()
-   * forwards the device context used by Homey's satellite-mode routing.
+   * Dump the Apps SDK RF runtime surface so we can inspect how ManagerRF
+   * forwards device context for Homey's satellite-mode routing.
    *
-   * This is intentionally diagnostic-only: no command is transmitted and no
-   * runtime manifest data is modified.
+   * This is diagnostic-only: no RF/IR command is transmitted.
    */
   logRfDiagnostics() {
     try {
+      const rf = this.homey.rf;
+
       this.log('=== RF MANAGER DIAGNOSTICS ===');
-      this.log('RF own properties:', Object.getOwnPropertyNames(this.homey.rf));
-      this.logPrototypeChain('RF manager', this.homey.rf);
+      this.log('RF own properties:', Object.getOwnPropertyNames(rf));
+      this.logPrototypeChain('RF manager', rf);
 
-      const signal = this.homey.rf.getSignalInfrared('dynamic_ir');
-
-      this.log('=== IR SIGNAL DIAGNOSTICS ===');
-      this.log('Signal own properties:', Object.getOwnPropertyNames(signal));
-      this.logPrototypeChain('IR signal', signal, true);
-
-      for (const methodName of ['cmd', 'tx']) {
-        const method = signal[methodName];
+      for (const methodName of [
+        'tx',
+        'cmd',
+        '_getSignalDefinition',
+        '_validateSignal',
+        'getSignalInfrared',
+      ]) {
+        const method = rf[methodName];
         if (typeof method === 'function') {
           this.log(
-            `IR signal ${methodName}():`,
-            Function.prototype.toString.call(method).slice(0, 6000),
+            `RF manager ${methodName}():`,
+            Function.prototype.toString.call(method).slice(0, 12000),
           );
         }
       }
+
+      this.log('=== RF CLIENT DIAGNOSTICS ===');
+      const client = rf.__client;
+      if (!client) {
+        this.log('RF __client is not available');
+        return;
+      }
+
+      this.log('RF __client own properties:', Object.getOwnPropertyNames(client));
+      this.logPrototypeChain('RF __client', client, true);
     } catch (error) {
       this.error('RF runtime diagnostics failed', error);
     }
@@ -101,7 +112,7 @@ module.exports = class IRRemoteApp extends Homey.App {
           if (typeof value === 'function') {
             this.log(
               `${label}.${propertyName}():`,
-              Function.prototype.toString.call(value).slice(0, 6000),
+              Function.prototype.toString.call(value).slice(0, 12000),
             );
           }
         }
