@@ -76,6 +76,15 @@ module.exports = {
     return true;
   },
 
+  async getDebug({ homey }) {
+    return { enabled: homey.app.isDebugEnabled() };
+  },
+
+  async setDebug({ homey, body }) {
+    homey.settings.set('debug', body?.enabled === true);
+    return { enabled: homey.app.isDebugEnabled() };
+  },
+
   async getExport({ homey }) {
     return {
       schemaVersion: 1,
