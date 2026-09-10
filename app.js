@@ -42,24 +42,27 @@ module.exports = class IRRemoteApp extends Homey.App {
   async sendIR(code, repetitions = 1, device) {
     if (!device) throw new Error('A Homey device is required for IR satellite routing');
 
-    // The known-good ProntoHex represents Samsung frame 0x3A8EC00B. For this
-    // probe it is represented as a regular Homey IR signal: SOF and EOF are
-    // fixed in the manifest, while each frame element selects words[0] or
-    // words[1]. This lets us exercise Signal.tx(frame, { device }) instead of
-    // the prontohex-only Signal.cmd() path.
-    const frame = [
+    // Same known-good Samsung 0x3A8EC00B probe as before, but now every
+    // mark/space pair is selected through the dynamic frame. There is no
+    // fixed sof/eof in the signal definition anymore:
+    //   words[0] = header
+    //   words[1] = bit 0
+    //   words[2] = bit 1
+    //   words[3] = trailer
+    const bits = [
       0, 0, 1, 1, 1, 0, 1, 0,
       1, 0, 0, 0, 1, 1, 1, 0,
       1, 1, 0, 0, 0, 0, 0, 0,
       0, 0, 0, 0, 1, 0, 1, 1,
     ];
+    const frame = [0, ...bits.map((bit) => bit + 1), 3];
 
     const signal = this.homey.rf.getSignalInfrared('dynamic_raw_ir');
 
     this.log(
-      `=== RF TX REGULAR IR PROBE: repetitions=${repetitions}, frameBits=${frame.length} ===`,
+      `=== RF TX WORD-ONLY IR PROBE: repetitions=${repetitions}, frameWords=${frame.length} ===`,
     );
-    this.log('Sending known working Samsung 0x3A8EC00B through regular IR Signal.tx with device routing');
+    this.log('Sending Samsung 0x3A8EC00B with header, data and trailer all selected by the dynamic frame');
 
     try {
       const result = await signal.tx(frame, {
@@ -67,13 +70,13 @@ module.exports = class IRRemoteApp extends Homey.App {
         device,
       });
       this.log(
-        'regular IR tx probe succeeded',
+        'word-only regular IR tx probe succeeded',
         typeof result === 'undefined' ? '<undefined>' : result,
       );
       return true;
     } catch (error) {
       const message = error && error.message ? error.message : String(error);
-      this.log(`regular IR tx probe rejected: ${message}`);
+      this.log(`word-only regular IR tx probe rejected: ${message}`);
       throw error;
     }
   }
