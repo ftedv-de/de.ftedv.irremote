@@ -26,8 +26,23 @@ const legacyEncoder = new IrSignalEncoder({
 });
 const codebookEncoder = new IrCodebookEncoder();
 
-const ON_PRONTO = '0000 006D 0022 0000 00B3 00AC 0017 0015 0017 0015 0017 0040 0017 0040 0017 0040 0017 0015 0017 0040 0017 0015 0017 0040 0017 0015 0017 0015 0017 0015 0017 0040 0017 0040 0017 0040 0017 0015 0017 0040 0017 0040 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0040 0017 0015 0017 0040 0017 0040 0016 0181';
-const OFF_PRONTO = '0000 006D 0022 0000 00B3 00AC 0017 0040 0017 0015 0017 0015 0017 0015 0017 0040 0017 0015 0017 0040 0017 0015 0017 0040 0017 0015 0017 0015 0017 0015 0017 0040 0017 0040 0017 0040 0017 0015 0017 0040 0017 0040 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0040 0017 0015 0017 0040 0017 0015 0017 0015 0017 0015 0017 0040 0017 0040 0016 0181';
+function prontoFor32BitValue(value) {
+  const words = ['0000', '006D', '0022', '0000', '00B3', '00AC'];
+  const bits = value.toString(2).padStart(32, '0');
+  for (const bit of bits) {
+    words.push('0017', bit === '1' ? '0040' : '0015');
+  }
+  words.push('0016', '0181');
+  return words.join(' ');
+}
+
+const ON_PRONTO = prontoFor32BitValue(0x3A8EC00B);
+const OFF_PRONTO = prontoFor32BitValue(0x8A8EC0A3);
+
+test('known 32-bit Pronto fixtures have the declared 34 pairs', () => {
+  assert.equal(ON_PRONTO.split(' ').length, 72);
+  assert.equal(OFF_PRONTO.split(' ').length, 72);
+});
 
 test('legacy encoder still converts the proven ON ProntoHex frame', () => {
   const raw = IrCodeConverter.prontoHexToRaw(ON_PRONTO);
