@@ -1,11 +1,11 @@
 {
   "title": {
-    "en": "Send [[button]] with [[device]]",
-    "de": "Sende [[button]] mit [[device]]"
+    "en": "Send a button",
+    "de": "Taste senden"
   },
   "titleFormatted": {
     "en": "Send [[button]]",
-    "de": "Sende [[button]]"
+    "de": "[[button]] senden"
   },
   "args": [
     {
