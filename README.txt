@@ -1,7 +1,3 @@
-Create real Homey devices for your infrared remotes and configure any number of buttons.
+Create virtual remotes for the devices you already control by hand. Learn button commands through an ESPHome/MQTT receiver or enter compatible codes manually, then send them from the Homey device interface or from Flow. Each virtual remote uses the Homey Bridge selected for that device, so commands can be transmitted close to the equipment you want to control.
 
-Open a remote's Repair screen to add, edit, learn, test or delete its buttons. IR codes can be learned through an ESPHome MQTT gateway or entered manually as ProntoHex or a raw JSON array. Saved buttons are displayed in the device UI and can also be sent from a Flow action card. Transmission uses Homey Pro's IR blaster through Homey's experimental ProntoHex API.
-
-All remotes and their buttons can be exported as one JSON file. Import the file while adding a new IR Remote device to recreate all remotes as Homey devices.
-
-The global app settings contain only the MQTT connection and JSON export. See docs/esphome-mqtt.md for the MQTT protocol used by the app.
+Buttons can be added, renamed, tested, relearned or removed at any time. Each remote also has its own portable JSON backup in the Repair view, making it easy to preserve or restore a configuration without changing the Homey device identity or its selected Bridge.
