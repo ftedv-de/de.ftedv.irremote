@@ -12,13 +12,17 @@ function capture(consensus, timings, carrier = 38000) {
   });
 }
 
-function binaryCapture(consensus, bits, jitter = 0) {
+function binaryTimings(bits, jitter = 0, mark = 560) {
   const timings = [9000 + jitter, 4500];
   for (const bit of bits) {
-    timings.push(560, bit === '1' ? 1690 + jitter : 560 + jitter);
+    timings.push(mark, bit === '1' ? 1690 + jitter : 560 + jitter);
   }
-  timings.push(560, 10000);
-  return capture(consensus, timings);
+  timings.push(mark, 10000);
+  return timings;
+}
+
+function binaryCapture(consensus, bits, jitter = 0, mark = 560) {
+  return capture(consensus, binaryTimings(bits, jitter, mark));
 }
 
 const A = [9000, 4500, 560, 560, 560, 1690, 560, 10000];
@@ -102,6 +106,42 @@ test('five structurally equal binary frames may fall back to a real medoid with 
   assert.ok(result.support >= 4);
   assert.ok(captures.includes(result.capture));
   assert.equal(consensus.payloadBitDistance(result.capture, binaryCapture(consensus, base)), 0);
+  assert.equal(result.bitDistance, result.totalBitDistance);
+  assert.ok(result.maxBitDistance <= consensus.fallbackMaxDifferingBits);
+  assert.equal(result.averageBitDistance, result.totalBitDistance / (result.support - 1));
+});
+
+test('variable-payload fallback can be enabled after five attempts with only four valid captures', () => {
+  const consensus = new IrLearnConsensus();
+  const variants = [
+    '01011010010000001000000101110101',
+    '11011010010000001000000101110101',
+    '00011010010000001000000101110101',
+    '01111010010000001000000101110101',
+  ];
+  const captures = variants.map((bits) => binaryCapture(consensus, bits));
+
+  assert.equal(consensus.findConsensus(captures), null);
+  const result = consensus.findConsensus(captures, { allowVariablePayload: true });
+  assert.ok(result);
+  assert.equal(result.mode, 'variable-payload');
+  assert.equal(result.support, 4);
+});
+
+test('payload comparison includes the final payload bit', () => {
+  const consensus = new IrLearnConsensus();
+  const left = binaryCapture(consensus, '01010101010101010101010101010100');
+  const right = binaryCapture(consensus, '01010101010101010101010101010101');
+  assert.equal(consensus.payloadBitDistance(left, right), 1);
+});
+
+test('variable-payload fallback rejects a different pulse-mark shape', () => {
+  const consensus = new IrLearnConsensus();
+  const bits = '01011010010000001000000101110101';
+  const normal = binaryCapture(consensus, bits, 0, 560);
+  const differentMarks = binaryCapture(consensus, bits, 0, 1000);
+  assert.equal(consensus.hasCompatiblePulseShape(normal, differentMarks), false);
+  assert.equal(consensus.payloadBitDistance(normal, differentMarks), Number.POSITIVE_INFINITY);
 });
 
 test('variable-payload fallback refuses unrelated frames', () => {
