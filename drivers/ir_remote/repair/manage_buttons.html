@@ -7,7 +7,12 @@
     :root { --muted: #68727d; --line: #dfe4e8; }
     body { padding-bottom: 32px; }
     .intro { color: var(--muted); margin-bottom: 24px; }
-    .button-row { border-top: 1px solid var(--line); padding: 16px 0; }
+    .button-row { border: 1px solid var(--line); border-radius: 1em; padding: 16px; margin-bottom: 1em; background: var(--homey-color-mono-01); }
+    .button-row:last-child { margin-bottom: 0; }
+    .button-row .homey-form-group { margin: 0 0 1em 0; }
+    .button-row .homey-form-group:first-child { padding-right: 5px; }
+    .button-row .homey-form-group:first-child input { width: 100%; }
+    .button-name { width: 100%; display: inline-block; }
     .grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 80px; gap: 8px; }
     .code-editor { margin-top: 8px; }
     .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
@@ -32,11 +37,11 @@
     <fieldset class="homey-form-fieldset">
       <legend class="homey-form-legend" data-i18n="settings.add_button"></legend>
       <div class="grid">
-        <label class="homey-form-group">
-          <span class="homey-form-label" data-i18n="settings.button_name"></span>
+        <label class="homey-form-group" style="margin-bottom: 0;">
+          <span class="homey-form-label button-name" data-i18n="settings.button_name"></span>
           <input class="homey-form-input" id="new-name" maxlength="80">
         </label>
-        <label class="homey-form-group">
+        <label class="homey-form-group" style="margin-bottom: 0;">
           <span class="homey-form-label" data-i18n="settings.button_type"></span>
           <select class="homey-form-select" id="new-type"></select>
         </label>
@@ -108,7 +113,7 @@
         var row = document.createElement('article');
         row.className = 'button-row';
         row.innerHTML = '<div class="grid">'
-          + '<label class="homey-form-group"><span class="homey-form-label">' + Homey.__('settings.button_name') + '</span><input class="homey-form-input name" maxlength="80"></label>'
+          + '<label class="homey-form-group"><span class="homey-form-label button-name">' + Homey.__('settings.button_name') + '</span><input class="homey-form-input name" maxlength="80"></label>'
           + '<label class="homey-form-group"><span class="homey-form-label">' + Homey.__('settings.button_type') + '</span><select class="homey-form-select type">' + optionList(button.type) + '</select></label>'
           + '<label class="homey-form-group"><span class="homey-form-label">' + Homey.__('repair.repetitions') + '</span><input class="homey-form-input repetitions" type="number" min="1" max="20"></label>'
           + '</div>'
