@@ -2,6 +2,7 @@
 
 const Homey = require('homey');
 const { randomUUID } = require('crypto');
+const RemoteBackup = require('../../lib/RemoteBackup');
 
 module.exports = class IRRemoteDriver extends Homey.Driver {
 
@@ -11,8 +12,6 @@ module.exports = class IRRemoteDriver extends Homey.Driver {
       data: { id: randomUUID() },
       store: { buttons: [] },
     }));
-
-    session.setHandler('validate_import', async (data) => this.validateImport(data));
   }
 
   async onRepair(session, device) {
@@ -20,6 +19,29 @@ module.exports = class IRRemoteDriver extends Homey.Driver {
       name: device.getName(),
       buttons: device.getButtons(),
     }));
+
+    session.setHandler('export_remote', async () => RemoteBackup.create({
+      appId: this.homey.app.id,
+      name: device.getName(),
+      buttons: device.getButtons(),
+    }));
+
+    session.setHandler('import_remote', async (data) => {
+      const remote = RemoteBackup.extractRemote(data);
+      const name = this.validateName(remote.name);
+      const buttons = this.homey.app.validateButtons(remote.buttons);
+
+      // Restore the selected Homey device in place. Its device identity and
+      // satellite/Bridge selection remain untouched; only user-managed remote
+      // data from the backup is restored.
+      await device.setButtons(buttons);
+      await device.setName(name);
+
+      return {
+        name: device.getName(),
+        buttons: device.getButtons(),
+      };
+    });
 
     session.setHandler('add_button', async (button) => {
       const buttons = device.getButtons();
@@ -75,20 +97,6 @@ module.exports = class IRRemoteDriver extends Homey.Driver {
   validateName(name) {
     if (typeof name !== 'string' || !name.trim()) throw new Error('Name is required');
     return name.trim().slice(0, 80);
-  }
-
-  validateImport(data) {
-    if (!data || data.schemaVersion !== 1 || !Array.isArray(data.remotes)) {
-      throw new Error('Invalid IR Remote export file');
-    }
-
-    return data.remotes.map((remote) => ({
-      name: this.validateName(remote.name),
-      data: { id: randomUUID() },
-      store: {
-        buttons: this.homey.app.validateButtons(remote.buttons),
-      },
-    }));
   }
 
 };
