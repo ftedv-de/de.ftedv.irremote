@@ -1,24 +1,24 @@
-# Homey IR Remote
+# Universal Remote for Homey
 
-Homey app for learning arbitrary IR codes through an ESPHome/MQTT receiver and transmitting them through the Homey Bridge selected for each virtual remote.
+Universal Remote creates virtual remote-control devices in Homey. Buttons can be learned through an ESPHome/MQTT receiver or entered manually as ProntoHex/raw timings. Learned commands are converted into regular Homey infrared frames and sent through the Homey Bridge selected for each virtual remote.
 
-## Dynamic IR transmission
+## How transmission works
 
-Homey cannot route runtime ProntoHex directly through a Bridge. The app therefore converts learned ProntoHex/raw timings into a regular Homey IR frame whose entries reference a static timing codebook.
+Homey cannot route arbitrary runtime ProntoHex directly through a Bridge. Universal Remote therefore converts each stored command into a frame whose entries reference one of the static timing codebooks in `.homeycompose/signals/ir`.
 
-The production codebook uses a 32 x 32 Cartesian timing matrix (1024 words) with logarithmically distributed durations from 5 to 32767 microseconds. Static carrier profiles are provided every 2 kHz from 30 to 58 kHz. The nearest carrier profile is selected automatically.
+The production codebooks use a 32 x 32 Cartesian timing matrix (1024 words) with logarithmically distributed durations from 5 to 32767 microseconds. Carrier profiles are available every 2 kHz from 30 to 58 kHz and the nearest profile is selected automatically.
 
-The 64, 256, 512 and 1024 word-index diagnostic signals are intentionally kept separate from the production codebooks. Physical tests confirmed correct Bridge output through word index 1023.
+## Learning
+
+Learning uses MQTT topics shared with an ESPHome receiver. Homey collects multiple captures and prefers a stable consensus instead of blindly storing the first frame. ProntoHex and raw timing arrays can also be entered manually, so the learning gateway is optional when a compatible code is already known.
+
+See `docs/esphome-mqtt.md` for the MQTT protocol and the example ESPHome firmware in `esp8285_firmware/`.
+
+## Device backups
+
+Backups are intentionally per remote. Open a remote's Repair view, export its JSON into the shared backup text field and copy it wherever you want to keep it. To restore a backup, paste the JSON into the same field and import it. The current Homey device identity and selected Bridge remain intact.
 
 ## Development
-
-The carrier codebooks are checked into `.homeycompose/signals/ir`, so normal Homey commands work directly after a fresh clone:
-
-```bash
-homey app run --remote
-```
-
-Normal project checks remain available:
 
 ```bash
 npm test
@@ -28,18 +28,20 @@ npm run homey:build
 npm run homey:run
 ```
 
-`npm run homey:run` is simply an alias for `homey app run --remote`.
-
-`scripts/generate-ir-codebooks.js` is a maintenance tool. Run:
+Before publishing a release, run:
 
 ```bash
-npm run generate:ir-codebooks
+npm run homey:validate:publish
 ```
 
-only when changing the timing grid or carrier buckets, then commit the regenerated `dynamic_codebook_*.json` files. The generator writes the tracked files deterministically so an unchanged codebook definition does not create formatting-only diffs.
+or use the complete publishing command:
+
+```bash
+npm run homey:publish
+```
+
+`scripts/generate-ir-codebooks.js` is a maintenance tool for regenerating the tracked production codebooks after changing the timing grid or carrier buckets.
 
 ## Encoding limits
 
-Regular Homey IR signal timings are limited to 5..32767 microseconds. The encoder quantizes each mark and space independently and rejects a timing when the codebook error would exceed 20%. A terminal space longer than 32767 microseconds is clamped because transmission ends in silence anyway; oversized spaces inside a frame are rejected rather than silently changing protocol timing.
-
-Pronto repeat sections are preserved when a button requests multiple repetitions. Raw codes without a separate repeat section use Homey's native signal repetition support.
+Regular Homey infrared signal timings are limited to 5..32767 microseconds. The encoder quantizes mark and space durations independently and rejects a timing when the codebook error would exceed 20%. A terminal space longer than 32767 microseconds is clamped because transmission ends in silence anyway; oversized spaces inside a frame are rejected instead of silently changing protocol timing.
