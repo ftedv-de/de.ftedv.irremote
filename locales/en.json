@@ -33,7 +33,7 @@
     "learned": "Code available",
     "not_learned": "No code",
     "learn": "Learn",
-    "press_remote": "Point the remote at the ESPHome receiver and press the desired button. Learning waits up to 30 seconds.",
+    "press_remote": "Point the remote at the ESPHome receiver and briefly press the same button several times. Homey compares up to 5 captures and accepts the code as soon as 3 match closely enough. Learning waits up to 30 seconds.",
     "test": "Test",
     "delete": "Delete",
     "confirm_delete": "Delete this button?",
