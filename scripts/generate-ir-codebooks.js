@@ -22,7 +22,7 @@ for (const carrier of CARRIER_BUCKETS) {
     txOnly: true,
   };
   const file = path.join(signalDir, `${signalIdForCarrier(carrier)}.json`);
-  fs.writeFileSync(file, `${JSON.stringify(signal, null, 2)}\n`);
+  fs.writeFileSync(file, `${JSON.stringify(signal)}\n`);
 }
 
 console.log(`Generated ${CARRIER_BUCKETS.length} IR codebook signals with ${words.length} words each.`);
