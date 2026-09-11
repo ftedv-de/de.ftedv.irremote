@@ -1,9 +1,8 @@
 # Dependencies
 node_modules/
 
-# Homey build / generated files
+# Homey build files
 .homeybuild/
-.homeycompose/signals/ir/dynamic_codebook_*.json
 
 # Environment / secrets
 .env
