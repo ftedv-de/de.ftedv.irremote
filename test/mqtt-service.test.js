@@ -59,6 +59,13 @@ function addPending(service, requestId, overrides = {}) {
   };
 }
 
+function binaryTimings(bits) {
+  const timings = [9000, 4500];
+  for (const bit of bits) timings.push(560, bit === '1' ? 1690 : 560);
+  timings.push(560, 10000);
+  return timings;
+}
+
 test('malformed MQTT JSON never escapes the message handler', () => {
   const app = createApp();
   const service = new MqttService(app);
@@ -138,6 +145,43 @@ test('three matching valid captures resolve the learning request', () => {
   assert.equal(result.rejectedError, undefined);
   assert.ok(result.resolvedValue);
   assert.equal(result.resolvedValue.format, 'raw');
+});
+
+test('four variable valid captures plus one invalid final attempt can resolve fallback consensus', () => {
+  const app = createApp();
+  const service = new MqttService(app);
+  const requestId = 'test-request';
+  const result = addPending(service, requestId);
+  const variants = [
+    '01011010010000001000000101110101',
+    '11011010010000001000000101110101',
+    '00011010010000001000000101110101',
+    '01111010010000001000000101110101',
+  ];
+
+  variants.forEach((bits, index) => {
+    service.handleMessage('homey/ir/received', Buffer.from(JSON.stringify({
+      requestId,
+      captureIndex: index + 1,
+      format: 'raw',
+      carrier: 38000,
+      code: binaryTimings(bits),
+    })));
+  });
+
+  assert.equal(service.pendingLearn.size, 1);
+  service.handleMessage('homey/ir/received', Buffer.from(JSON.stringify({
+    requestId,
+    captureIndex: 5,
+    format: 'pronto',
+    code: '0000 006D 0022 0000 00B3',
+  })));
+
+  assert.equal(service.pendingLearn.size, 0);
+  assert.equal(result.rejectedError, undefined);
+  assert.ok(result.resolvedValue);
+  assert.equal(result.resolvedValue.format, 'raw');
+  assert.ok(app.debugs.some((args) => String(args[0]).includes('mode=variable-payload')));
 });
 
 test('QoS1 duplicate capture indexes do not count as separate captures', () => {
