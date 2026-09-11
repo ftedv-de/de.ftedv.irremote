@@ -58,9 +58,15 @@ module.exports = class IRRemoteApp extends Homey.App {
     const raw = IrCodeConverter.codeToRaw(normalizedCode);
     const encoded = this.irEncoder.encode(raw, repetitions);
     const signal = this.homey.rf.getSignalInfrared(encoded.signalId);
+    const maxTimingError = (encoded.quantization.maxTimingError * 100).toFixed(1);
 
     this.debugLog(
-      `IR TX: format=${normalizedCode.format}, requestedCarrier=${raw.carrier}Hz, signal=${encoded.signalId}, carrier=${encoded.carrier}Hz, carrierError=${encoded.carrierErrorHz}Hz, repetitions=${repetitions}, txRepetitions=${encoded.txRepetitions}, frameWords=${encoded.frame.length}, maxTimingError=${(encoded.quantization.maxTimingError * 100).toFixed(1)}%, terminalSpaceClamped=${encoded.quantization.terminalSpaceClamped}`,
+      `IR TX: format=${normalizedCode.format}, requestedCarrier=${raw.carrier}Hz, `
+      + `signal=${encoded.signalId}, carrier=${encoded.carrier}Hz, `
+      + `carrierError=${encoded.carrierErrorHz}Hz, repetitions=${repetitions}, `
+      + `txRepetitions=${encoded.txRepetitions}, frameWords=${encoded.frame.length}, `
+      + `maxTimingError=${maxTimingError}%, `
+      + `terminalSpaceClamped=${encoded.quantization.terminalSpaceClamped}`,
     );
 
     try {
