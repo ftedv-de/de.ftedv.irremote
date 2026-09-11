@@ -35,30 +35,6 @@
     "homey:wireless:ir"
   ],
   "api": {
-    "getRemotes": {
-      "method": "GET",
-      "path": "/remotes"
-    },
-    "addButton": {
-      "method": "POST",
-      "path": "/remotes/:deviceId/buttons"
-    },
-    "updateButton": {
-      "method": "PUT",
-      "path": "/remotes/:deviceId/buttons/:buttonId"
-    },
-    "deleteButton": {
-      "method": "DELETE",
-      "path": "/remotes/:deviceId/buttons/:buttonId"
-    },
-    "learnButton": {
-      "method": "POST",
-      "path": "/remotes/:deviceId/buttons/:buttonId/learn"
-    },
-    "sendButton": {
-      "method": "POST",
-      "path": "/remotes/:deviceId/buttons/:buttonId/send"
-    },
     "getMqtt": {
       "method": "GET",
       "path": "/mqtt"
