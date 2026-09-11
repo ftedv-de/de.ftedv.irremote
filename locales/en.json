@@ -2,16 +2,12 @@
   "pair": {
     "create_title": "Create a remote",
     "name": "Name",
-    "create": "Create remote",
-    "import_title": "Import backup",
-    "import": "Import all remotes",
-    "select_file": "Select a JSON file first.",
-    "imported": "Imported __count__ remotes."
+    "create": "Create remote"
   },
   "settings": {
     "title": "IR Remote workshop",
     "subtitle": "Manage buttons, learn codes through ESPHome and keep a portable backup.",
-    "global_subtitle": "Configure ESPHome for IR learning and export all remotes. Dynamic IR commands are sent through the Homey Bridge selected for the device.",
+    "global_subtitle": "Configure ESPHome for IR learning and manage diagnostics. Dynamic IR commands are sent through the Homey Bridge selected for the device.",
     "mqtt_title": "ESPHome MQTT connection",
     "username": "Username",
     "password": "Password",
@@ -25,7 +21,7 @@
     "ir_word_test_run": "Test IR word index 1023",
     "ir_word_test_success": "Test frame sent: word index __index__ of __count__ words.",
     "remotes": "Remotes",
-    "add_remote_hint": "Add or import remotes from Devices > Add Device > IR Remote.",
+    "add_remote_hint": "Add remotes from Devices > Add Device > IR Remote.",
     "no_remotes": "No IR remotes have been added yet.",
     "button_name": "Button name",
     "button_type": "Button type",
@@ -37,17 +33,22 @@
     "test": "Test",
     "delete": "Delete",
     "confirm_delete": "Delete this button?",
-    "code": "ProntoHex or raw JSON array",
-    "backup": "Backup",
-    "export": "Export all remotes",
-    "import_hint": "The JSON file can be imported while adding a new IR Remote device."
+    "code": "ProntoHex or raw JSON array"
   },
   "repair": {
     "subtitle": "Add, edit, learn, test or delete the buttons of this remote.",
     "no_buttons": "This remote has no buttons yet.",
     "repetitions": "Repeats",
     "close": "Finish",
-    "transmitter_notice": "Learned ProntoHex/raw codes are mapped into a static timing codebook. This lets Homey send them dynamically through the Homey Bridge selected for this remote."
+    "transmitter_notice": "Learned ProntoHex/raw codes are mapped into a static timing codebook. This lets Homey send them dynamically through the Homey Bridge selected for this remote.",
+    "backup_title": "Backup this remote",
+    "backup_hint": "Export and import apply only to this remote. Import replaces this remote's name and all buttons from the backup; the Homey device ID and Bridge assignment stay unchanged.",
+    "export": "Export this remote",
+    "import": "Import backup into this remote",
+    "select_file": "Select a JSON backup file first.",
+    "confirm_import": "Replace the complete current configuration of this remote with the selected backup?",
+    "exported": "Backup for this remote was created.",
+    "imported": "Backup was imported into this remote."
   },
   "types": {
     "custom": "Custom",
