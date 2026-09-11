@@ -14,7 +14,11 @@
     .state { font-size: 12px; margin-top: 6px; }
     .learned { color: #19713d; }
     .missing { color: #a13a29; }
-    .add-panel { border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin: 20px 0; }
+    .panel { border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin: 20px 0; }
+    .panel h2 { margin-top: 0; }
+    .backup-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .backup-actions button { flex: 1 1 180px; }
+    .backup-status { color: var(--muted); font-size: 12px; margin: 8px 0 0; }
     @media (max-width: 520px) { .grid { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -23,7 +27,7 @@
   <p class="intro" data-i18n="repair.transmitter_notice"></p>
   <div id="buttons"></div>
 
-  <section class="add-panel">
+  <section class="panel">
     <fieldset class="homey-form-fieldset">
       <legend class="homey-form-legend" data-i18n="settings.add_button"></legend>
       <div class="grid">
@@ -40,10 +44,22 @@
     <button class="homey-button-primary-full" id="add" data-i18n="settings.add_button"></button>
   </section>
 
+  <section class="panel">
+    <h2 data-i18n="repair.backup_title"></h2>
+    <p class="intro" data-i18n="repair.backup_hint"></p>
+    <input class="homey-form-input" id="backup-file" type="file" accept="application/json,.json">
+    <div class="backup-actions">
+      <button class="homey-button-secondary-full" id="export" data-i18n="repair.export"></button>
+      <button class="homey-button-secondary-full" id="import" data-i18n="repair.import"></button>
+    </div>
+    <p class="backup-status" id="backup-status"></p>
+  </section>
+
   <button class="homey-button-secondary-full" id="close" data-i18n="repair.close"></button>
 
   <script>
     var buttonTypes = ['custom', 'switch_on', 'switch_off', 'switch_toggle', 'dim_up', 'dim_down', 'channel_up', 'channel_down', 'mute', 'input', 'number'];
+    var remoteName = 'ir-remote';
 
     function optionList(selected) {
       return buttonTypes.map(function (type) {
@@ -57,6 +73,13 @@
       return value.charAt(0) === '['
         ? { format: 'raw', code: JSON.parse(value) }
         : { format: 'pronto', code: value };
+    }
+
+    function fileSafeName(value) {
+      return String(value || 'ir-remote')
+        .trim()
+        .replace(/[^a-zA-Z0-9._-]+/g, '-')
+        .replace(/^-+|-+$/g, '') || 'ir-remote';
     }
 
     function createAction(label, handler) {
@@ -147,9 +170,48 @@
         await Homey.alert(error.message || error, 'error');
       }
     };
+
+    document.getElementById('export').onclick = async function () {
+      try {
+        var data = await Homey.emit('export_remote');
+        var url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+        var link = document.createElement('a');
+        link.href = url;
+        link.download = fileSafeName(data.remote && data.remote.name ? data.remote.name : remoteName) + '.json';
+        link.click();
+        URL.revokeObjectURL(url);
+        document.getElementById('backup-status').textContent = Homey.__('repair.exported');
+      } catch (error) {
+        await Homey.alert(error.message || error, 'error');
+      }
+    };
+
+    document.getElementById('import').onclick = async function () {
+      var file = document.getElementById('backup-file').files[0];
+      if (!file) {
+        await Homey.alert(Homey.__('repair.select_file'), 'warning');
+        return;
+      }
+      if (!await Homey.confirm(Homey.__('repair.confirm_import'), 'warning')) return;
+
+      try {
+        Homey.showLoadingOverlay();
+        var remote = await Homey.emit('import_remote', JSON.parse(await file.text()));
+        remoteName = remote.name;
+        Homey.setTitle(remote.name);
+        render(remote.buttons);
+        document.getElementById('backup-status').textContent = Homey.__('repair.imported');
+      } catch (error) {
+        await Homey.alert(error.message || error, 'error');
+      } finally {
+        Homey.hideLoadingOverlay();
+      }
+    };
+
     document.getElementById('close').onclick = function () { Homey.done(); };
 
     Homey.emit('get_remote').then(function (remote) {
+      remoteName = remote.name;
       Homey.setTitle(remote.name);
       render(remote.buttons);
     }).catch(function (error) {
