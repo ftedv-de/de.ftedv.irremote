@@ -2,31 +2,16 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <style>
-    .section { margin-bottom: 24px; }
-    .status { margin-top: 12px; color: var(--homey-color-mono-600); }
-  </style>
 </head>
 <body class="homey-widget-full">
-  <div class="section">
-    <fieldset class="homey-form-fieldset">
-      <legend class="homey-form-legend" data-i18n="pair.create_title"></legend>
-      <div class="homey-form-group">
-        <label class="homey-form-label" for="name" data-i18n="pair.name"></label>
-        <input class="homey-form-input" id="name" type="text" maxlength="80">
-      </div>
-    </fieldset>
-    <button class="homey-button-primary-full" id="create" data-i18n="pair.create"></button>
-  </div>
-
-  <div class="section">
-    <fieldset class="homey-form-fieldset">
-      <legend class="homey-form-legend" data-i18n="pair.import_title"></legend>
-      <input class="homey-form-input" id="file" type="file" accept="application/json,.json">
-    </fieldset>
-    <button class="homey-button-secondary-full" id="import" data-i18n="pair.import"></button>
-    <p class="status" id="status"></p>
-  </div>
+  <fieldset class="homey-form-fieldset">
+    <legend class="homey-form-legend" data-i18n="pair.create_title"></legend>
+    <div class="homey-form-group">
+      <label class="homey-form-label" for="name" data-i18n="pair.name"></label>
+      <input class="homey-form-input" id="name" type="text" maxlength="80">
+    </div>
+  </fieldset>
+  <button class="homey-button-primary-full" id="create" data-i18n="pair.create"></button>
 
   <script>
     document.getElementById('create').addEventListener('click', async function () {
@@ -37,23 +22,6 @@
         });
         await Homey.createDevice(device);
         Homey.done();
-      } catch (error) {
-        Homey.alert(error.message || error, 'error');
-      } finally {
-        Homey.hideLoadingOverlay();
-      }
-    });
-
-    document.getElementById('import').addEventListener('click', async function () {
-      const file = document.getElementById('file').files[0];
-      if (!file) return Homey.alert(Homey.__('pair.select_file'), 'warning');
-
-      try {
-        Homey.showLoadingOverlay();
-        const devices = await Homey.emit('validate_import', JSON.parse(await file.text()));
-        for (const device of devices) await Homey.createDevice(device);
-        document.getElementById('status').textContent = Homey.__('pair.imported', { count: devices.length });
-        Homey.setNavigationClose();
       } catch (error) {
         Homey.alert(error.message || error, 'error');
       } finally {
