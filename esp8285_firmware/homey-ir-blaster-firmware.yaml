@@ -35,6 +35,16 @@ globals:
     restore_value: no
     initial_value: '""'
 
+  - id: ir_learn_capture_count
+    type: int
+    restore_value: no
+    initial_value: '0'
+
+  - id: ir_learn_max_captures
+    type: int
+    restore_value: no
+    initial_value: '5'
+
 mqtt:
   id: mqtt_client
   broker: !secret mqtt_broker
@@ -52,12 +62,44 @@ mqtt:
             }
 
             id(ir_learn_request_id) = x["requestId"].as<std::string>();
+            id(ir_learn_capture_count) = 0;
+            id(ir_learn_max_captures) = 5;
+
+            if (x["maxCaptures"].is<int>()) {
+              const int requested = x["maxCaptures"].as<int>();
+              if (requested >= 1 && requested <= 10) {
+                id(ir_learn_max_captures) = requested;
+              }
+            }
 
             ESP_LOGI(
               "ir_learn",
-              "Learning started, requestId=%s",
-              id(ir_learn_request_id).c_str()
+              "Learning started, requestId=%s, maxCaptures=%d",
+              id(ir_learn_request_id).c_str(),
+              id(ir_learn_max_captures)
             );
+
+    - topic: homey/ir/learn/stop
+      qos: 1
+      then:
+        - lambda: |-
+            if (!x["requestId"].is<const char *>()) {
+              return;
+            }
+
+            const std::string request_id = x["requestId"].as<std::string>();
+            if (request_id != id(ir_learn_request_id)) {
+              return;
+            }
+
+            ESP_LOGI(
+              "ir_learn",
+              "Learning stopped by Homey, requestId=%s, captures=%d",
+              id(ir_learn_request_id).c_str(),
+              id(ir_learn_capture_count)
+            );
+            id(ir_learn_request_id).clear();
+            id(ir_learn_capture_count) = 0;
 
 remote_receiver:
   id: ir_receiver
@@ -73,7 +115,8 @@ remote_receiver:
       - if:
           condition:
             lambda: |-
-              return !id(ir_learn_request_id).empty();
+              return !id(ir_learn_request_id).empty()
+                && id(ir_learn_capture_count) < id(ir_learn_max_captures);
 
           then:
             - mqtt.publish_json:
@@ -84,17 +127,29 @@ remote_receiver:
                   root["requestId"] = id(ir_learn_request_id);
                   root["format"] = "pronto";
                   root["code"] = x.data;
+                  root["captureIndex"] = id(ir_learn_capture_count) + 1;
+                  root["maxCaptures"] = id(ir_learn_max_captures);
 
             - lambda: |-
+                id(ir_learn_capture_count) += 1;
+
                 ESP_LOGI(
                   "ir_learn",
-                  "Learned Pronto code for requestId=%s",
+                  "Published Pronto capture %d/%d for requestId=%s",
+                  id(ir_learn_capture_count),
+                  id(ir_learn_max_captures),
                   id(ir_learn_request_id).c_str()
                 );
 
-                // Nur genau das nächste IR-Signal gehört
-                // zu diesem Lernauftrag.
-                id(ir_learn_request_id).clear();
+                if (id(ir_learn_capture_count) >= id(ir_learn_max_captures)) {
+                  ESP_LOGI(
+                    "ir_learn",
+                    "Learning capture limit reached, requestId=%s",
+                    id(ir_learn_request_id).c_str()
+                  );
+                  id(ir_learn_request_id).clear();
+                  id(ir_learn_capture_count) = 0;
+                }
 
 remote_transmitter:
   id: ir_transmitter
