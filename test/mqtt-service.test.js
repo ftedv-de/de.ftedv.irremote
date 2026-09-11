@@ -44,6 +44,7 @@ function addPending(service, requestId, overrides = {}) {
     timer: setTimeout(() => {}, 10000),
     attempts: 0,
     captures: [],
+    seenCaptureIndexes: new Set(),
     resolve(value) {
       resolvedValue = value;
     },
@@ -123,17 +124,42 @@ test('three matching valid captures resolve the learning request', () => {
     [9150, 4600, 545, 575, 570, 1710, 550, 8000],
   ];
 
-  for (const code of captures) {
+  captures.forEach((code, index) => {
     service.handleMessage('homey/ir/received', Buffer.from(JSON.stringify({
       requestId,
+      captureIndex: index + 1,
       format: 'raw',
       carrier: 38000,
       code,
     })));
-  }
+  });
 
   assert.equal(service.pendingLearn.size, 0);
   assert.equal(result.rejectedError, undefined);
   assert.ok(result.resolvedValue);
   assert.equal(result.resolvedValue.format, 'raw');
+});
+
+test('QoS1 duplicate capture indexes do not count as separate captures', () => {
+  const app = createApp();
+  const service = new MqttService(app);
+  const requestId = 'test-request';
+  addPending(service, requestId);
+
+  const payload = Buffer.from(JSON.stringify({
+    requestId,
+    captureIndex: 1,
+    format: 'raw',
+    carrier: 38000,
+    code: [9000, 4500, 560, 560, 560, 1690, 560, 10000],
+  }));
+
+  service.handleMessage('homey/ir/received', payload);
+  service.handleMessage('homey/ir/received', payload);
+  service.handleMessage('homey/ir/received', payload);
+
+  const pending = service.pendingLearn.get(requestId);
+  assert.equal(pending.attempts, 1);
+  assert.equal(pending.captures.length, 1);
+  clearTimeout(pending.timer);
 });
