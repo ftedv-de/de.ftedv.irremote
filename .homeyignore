@@ -1,0 +1,32 @@
+# Version-control and development metadata
+.git/
+.github/
+.gitignore
+.eslintrc.json
+.vscode/
+.idea/
+
+# Development-only material
+test/
+coverage/
+docs/
+esp8285_firmware/
+scripts/
+README.md
+CONTRIBUTING.md
+CODE_OF_CONDUCT.md
+LICENSE
+
+# Local and temporary files
+.env
+.env.*
+*.log
+*.tmp
+*.temp
+*~
+.DS_Store
+Thumbs.db
+
+# Dependencies/build output are managed by the Homey toolchain
+node_modules/
+.homeybuild/
