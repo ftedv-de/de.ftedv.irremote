@@ -94,16 +94,4 @@ module.exports = {
     return homey.app.sendIrWordIndexDiagnostic(body.deviceId, wordCount);
   },
 
-  async getExport({ homey }) {
-    return {
-      schemaVersion: 1,
-      appId: homey.app.id,
-      exportedAt: new Date().toISOString(),
-      remotes: homey.app.getRemoteDevices().map((device) => ({
-        name: device.getName(),
-        buttons: device.getButtons(),
-      })),
-    };
-  },
-
 };
