@@ -54,12 +54,6 @@
     <button class="homey-button-secondary-full" id="run-ir-word-test" data-i18n="settings.ir_word_test_run"></button>
   </section>
 
-  <section class="panel">
-    <h2 data-i18n="settings.backup"></h2>
-    <p data-i18n="settings.import_hint"></p>
-    <button class="homey-button-secondary-full" id="export" data-i18n="settings.export"></button>
-  </section>
-
   <script>
     var HomeyApi;
 
@@ -127,20 +121,6 @@
           Homey.alert(Homey.__('settings.ir_word_test_success')
             .replace('__index__', result.testedWordIndex)
             .replace('__count__', result.wordCount));
-        } catch (error) {
-          Homey.alert(error.message || error, 'error');
-        }
-      };
-
-      document.getElementById('export').onclick = async function () {
-        try {
-          var data = await api('GET', '/export');
-          var url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
-          var link = document.createElement('a');
-          link.href = url;
-          link.download = 'homey-ir-remotes.json';
-          link.click();
-          URL.revokeObjectURL(url);
         } catch (error) {
           Homey.alert(error.message || error, 'error');
         }
