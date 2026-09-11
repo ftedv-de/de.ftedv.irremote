@@ -6,19 +6,19 @@ Homey app for learning arbitrary IR codes through an ESPHome/MQTT receiver and t
 
 Homey cannot route runtime ProntoHex directly through a Bridge. The app therefore converts learned ProntoHex/raw timings into a regular Homey IR frame whose entries reference a static timing codebook.
 
-The production codebook uses a 32 x 32 Cartesian timing matrix (1024 words) with logarithmically distributed durations from 5 to 32767 microseconds. Carrier profiles are generated every 2 kHz from 30 to 58 kHz. The nearest carrier profile is selected automatically.
+The production codebook uses a 32 x 32 Cartesian timing matrix (1024 words) with logarithmically distributed durations from 5 to 32767 microseconds. Static carrier profiles are provided every 2 kHz from 30 to 58 kHz. The nearest carrier profile is selected automatically.
 
 The 64, 256, 512 and 1024 word-index diagnostic signals are intentionally kept separate from the production codebooks. Physical tests confirmed correct Bridge output through word index 1023.
 
 ## Development
 
-Generate the carrier codebooks before Homey preprocessing:
+The carrier codebooks are checked into `.homeycompose/signals/ir`, so normal Homey commands work directly after a fresh clone:
 
 ```bash
-npm run generate:ir-codebooks
+homey app run --remote
 ```
 
-The normal project commands do this automatically:
+Normal project checks remain available:
 
 ```bash
 npm test
@@ -28,9 +28,15 @@ npm run homey:build
 npm run homey:run
 ```
 
-`npm run homey:run` is equivalent to generating the codebooks first and then running `homey app run --remote`.
+`npm run homey:run` is simply an alias for `homey app run --remote`.
 
-Generated `dynamic_codebook_*.json` compose files are intentionally not tracked. They are deterministic output of `scripts/generate-ir-codebooks.js`.
+`scripts/generate-ir-codebooks.js` is a maintenance tool. Run:
+
+```bash
+npm run generate:ir-codebooks
+```
+
+only when changing the timing grid or carrier buckets, then commit the regenerated `dynamic_codebook_*.json` files. The generator writes the tracked files deterministically so an unchanged codebook definition does not create formatting-only diffs.
 
 ## Encoding limits
 
