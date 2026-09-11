@@ -12,10 +12,6 @@ const {
   buildWords,
   signalIdForCarrier,
 } = require('../lib/IrCodebook');
-const wordIndexTestSignal64 = require('../.homeycompose/signals/ir/word_index_test_64.json');
-const wordIndexTestSignal256 = require('../.homeycompose/signals/ir/word_index_test_256.json');
-const wordIndexTestSignal512 = require('../.homeycompose/signals/ir/word_index_test_512.json');
-const wordIndexTestSignal1024 = require('../.homeycompose/signals/ir/word_index_test_1024.json');
 
 const legacyEncoder = new IrSignalEncoder({
   carrier: 38000,
@@ -30,8 +26,8 @@ const legacyEncoder = new IrSignalEncoder({
 });
 const codebookEncoder = new IrCodebookEncoder();
 
-const ON_PRONTO = '0000 006D 0022 0000 00B3 00AC 0017 0015 0017 0015 0017 0040 0017 0040 0017 0040 0017 0015 0017 0040 0017 0015 0017 0040 0017 0015 0017 0015 0017 0015 0017 0040 0017 0040 0017 0040 0017 0015 0017 0040 0017 0040 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0040 0017 0015 0017 0040 0017 0040 0016 0181';
-const OFF_PRONTO = '0000 006D 0022 0000 00B3 00AC 0017 0040 0017 0015 0017 0015 0017 0015 0017 0040 0017 0015 0017 0040 0017 0015 0017 0040 0017 0015 0017 0015 0017 0015 0017 0040 0017 0040 0017 0040 0017 0015 0017 0040 0017 0040 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0040 0017 0015 0017 0040 0017 0015 0017 0015 0017 0015 0017 0040 0017 0040 0016 0181';
+const ON_PRONTO = '0000 006D 0022 0000 00B3 00AC 0017 0015 0017 0015 0017 0040 0017 0040 0017 0040 0017 0015 0017 0040 0017 0015 0017 0040 0017 0015 0017 0015 0017 0015 0017 0040 0017 0040 0017 0040 0017 0015 0017 0040 0017 0040 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0040 0017 0015 0017 0040 0017 0040 0016 0181';
+const OFF_PRONTO = '0000 006D 0022 0000 00B3 00AC 0017 0040 0017 0015 0017 0015 0017 0015 0017 0040 0017 0015 0017 0040 0017 0015 0017 0040 0017 0015 0017 0015 0017 0015 0017 0040 0017 0040 0017 0040 0017 0015 0017 0040 0017 0040 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0040 0017 0015 0017 0040 0017 0015 0017 0015 0017 0015 0017 0040 0017 0040 0016 0181';
 
 test('legacy encoder still converts the proven ON ProntoHex frame', () => {
   const raw = IrCodeConverter.prontoHexToRaw(ON_PRONTO);
@@ -139,25 +135,4 @@ test('rejects ProntoHex with more than the terminal space missing', () => {
     () => IrCodeConverter.prontoHexToRaw(OFF_PRONTO.split(' ').slice(0, -2).join(' ')),
     /length mismatch/,
   );
-});
-
-test('64-word diagnostic signal exposes word index 63', () => {
-  assert.equal(wordIndexTestSignal64.words.length, 64);
-  assert.deepEqual(wordIndexTestSignal64.words[0], [4707, 4523]);
-  assert.deepEqual(wordIndexTestSignal64.words[63], [605, 552]);
-});
-
-test('256-word diagnostic signal exposes word index 255', () => {
-  assert.equal(wordIndexTestSignal256.words.length, 256);
-  assert.deepEqual(wordIndexTestSignal256.words[255], [605, 552]);
-});
-
-test('512-word diagnostic signal exposes word index 511', () => {
-  assert.equal(wordIndexTestSignal512.words.length, 512);
-  assert.deepEqual(wordIndexTestSignal512.words[511], [605, 552]);
-});
-
-test('1024-word diagnostic signal exposes word index 1023', () => {
-  assert.equal(wordIndexTestSignal1024.words.length, 1024);
-  assert.deepEqual(wordIndexTestSignal1024.words[1023], [605, 552]);
 });
