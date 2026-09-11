@@ -33,7 +33,7 @@
     "learned": "Code vorhanden",
     "not_learned": "Kein Code",
     "learn": "Anlernen",
-    "press_remote": "Fernbedienung auf den ESPHome-Empfänger richten und die gewünschte Taste drücken. Das Anlernen wartet bis zu 30 Sekunden.",
+    "press_remote": "Fernbedienung auf den ESPHome-Empfänger richten und dieselbe Taste mehrmals kurz drücken. Homey vergleicht bis zu 5 Empfänge und übernimmt den Code, sobald 3 ausreichend übereinstimmen. Das Anlernen wartet bis zu 30 Sekunden.",
     "test": "Testen",
     "delete": "Löschen",
     "confirm_delete": "Diese Taste löschen?",
