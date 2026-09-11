@@ -5,7 +5,14 @@ const assert = require('node:assert/strict');
 const RemoteBackup = require('../lib/RemoteBackup');
 
 test('creates a schema v2 backup for exactly one remote', () => {
-  const buttons = [{ id: 'button-1', name: 'Power', type: 'switch_toggle', repetitions: 1 }];
+  const buttons = [
+    {
+      id: 'button-1',
+      name: 'Power',
+      type: 'switch_toggle',
+      repetitions: 1,
+    },
+  ];
   const backup = RemoteBackup.create({
     appId: 'de.ftedv.irremote',
     name: 'Living room TV',
@@ -28,18 +35,35 @@ test('creates a schema v2 backup for exactly one remote', () => {
 test('extracts a schema v2 single-remote backup', () => {
   const remote = {
     name: 'Amplifier',
-    buttons: [{ id: 'button-1', name: 'Mute', type: 'mute', repetitions: 1 }],
+    buttons: [{
+      id: 'button-1',
+      name: 'Mute',
+      type: 'mute',
+      repetitions: 1,
+    }],
   };
 
-  assert.deepEqual(RemoteBackup.extractRemote({ schemaVersion: 2, remote }), remote);
+  assert.deepEqual(RemoteBackup.extractRemote({
+    schemaVersion: 2,
+    remote,
+  }), remote);
 });
 
 test('accepts a legacy schema v1 backup only when it contains one remote', () => {
-  const remote = { name: 'Legacy', buttons: [] };
-  assert.deepEqual(RemoteBackup.extractRemote({ schemaVersion: 1, remotes: [remote] }), remote);
+  const remote = {
+    name: 'Legacy',
+    buttons: [],
+  };
+  assert.deepEqual(RemoteBackup.extractRemote({
+    schemaVersion: 1,
+    remotes: [remote],
+  }), remote);
 
   assert.throws(
-    () => RemoteBackup.extractRemote({ schemaVersion: 1, remotes: [remote, remote] }),
+    () => RemoteBackup.extractRemote({
+      schemaVersion: 1,
+      remotes: [remote, remote],
+    }),
     /multiple remotes/,
   );
 });
