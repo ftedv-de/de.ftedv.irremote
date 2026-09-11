@@ -123,9 +123,20 @@ test('raw codes without a repeat section keep firmware repetitions', () => {
   assert.equal(encoded.txRepetitions, 3);
 });
 
-test('rejects truncated ProntoHex instead of silently sending it', () => {
+test('repairs exactly one missing terminal Pronto space', () => {
+  const truncated = OFF_PRONTO.split(' ').slice(0, -1).join(' ');
+  const raw = IrCodeConverter.prontoHexToRaw(truncated);
+  const normalized = IrCodeConverter.normalizeCode({ format: 'pronto', code: truncated });
+
+  assert.equal(raw.terminalSpaceSynthesized, true);
+  assert.equal(raw.intro.length, 68);
+  assert.ok(Math.abs(raw.intro.at(-1) - 32767) <= 20);
+  assert.equal(normalized.code.split(' ').length, 72);
+});
+
+test('rejects ProntoHex with more than the terminal space missing', () => {
   assert.throws(
-    () => IrCodeConverter.prontoHexToRaw(OFF_PRONTO.split(' ').slice(0, -1).join(' ')),
+    () => IrCodeConverter.prontoHexToRaw(OFF_PRONTO.split(' ').slice(0, -2).join(' ')),
     /length mismatch/,
   );
 });
