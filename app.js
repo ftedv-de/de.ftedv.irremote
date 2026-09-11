@@ -6,13 +6,6 @@ const MqttService = require('./lib/MqttService');
 const IrCodeConverter = require('./lib/IrCodeConverter');
 const IrCodebookEncoder = require('./lib/IrCodebookEncoder');
 
-const IR_WORD_INDEX_TESTS = {
-  64: { signalId: 'word_index_test_64', testedWordIndex: 63 },
-  256: { signalId: 'word_index_test_256', testedWordIndex: 255 },
-  512: { signalId: 'word_index_test_512', testedWordIndex: 511 },
-  1024: { signalId: 'word_index_test_1024', testedWordIndex: 1023 },
-};
-
 module.exports = class IRRemoteApp extends Homey.App {
 
   async onInit() {
@@ -43,7 +36,7 @@ module.exports = class IRRemoteApp extends Homey.App {
       if (key === 'mqtt') this.mqtt.reconnect().catch((error) => this.error(error));
     });
 
-    this.log('IR Remote has been initialized');
+    this.log('Universal Remote has been initialized');
   }
 
   async onUninit() {
@@ -80,40 +73,6 @@ module.exports = class IRRemoteApp extends Homey.App {
     } catch (error) {
       const message = error && error.message ? error.message : String(error);
       this.error(`IR TX failed: ${message}`);
-      throw error;
-    }
-  }
-
-  async sendIrWordIndexDiagnostic(deviceId, wordCount = 1024) {
-    if (!this.isDebugEnabled()) {
-      throw new Error('Enable debug logging before running IR diagnostics');
-    }
-
-    const diagnostic = IR_WORD_INDEX_TESTS[wordCount];
-    if (!diagnostic) throw new Error(`Unsupported IR diagnostic word count: ${wordCount}`);
-
-    const device = this.getRemote(deviceId);
-    const signal = this.homey.rf.getSignalInfrared(diagnostic.signalId);
-    const frame = [0, diagnostic.testedWordIndex, diagnostic.testedWordIndex, diagnostic.testedWordIndex];
-
-    this.debugLog(
-      `IR word-index diagnostic TX: signal=${diagnostic.signalId}, frame=${frame.join(',')}`,
-    );
-
-    try {
-      await signal.tx(frame, { repetitions: 1, device });
-      this.debugLog(
-        `IR word-index diagnostic TX succeeded: word ${diagnostic.testedWordIndex} accepted`,
-      );
-      return {
-        signalId: diagnostic.signalId,
-        wordCount,
-        testedWordIndex: diagnostic.testedWordIndex,
-        frame,
-      };
-    } catch (error) {
-      const message = error && error.message ? error.message : String(error);
-      this.error(`IR word-index diagnostic TX failed: ${message}`);
       throw error;
     }
   }
