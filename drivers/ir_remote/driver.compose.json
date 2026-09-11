@@ -1,7 +1,7 @@
 {
   "name": {
-    "en": "IR Remote",
-    "de": "IR-Fernbedienung"
+    "en": "Remote Control",
+    "de": "Fernbedienung"
   },
   "class": "remote",
   "connectivity": ["infrared"],
@@ -10,9 +10,9 @@
     "satelliteMode": true
   },
   "images": {
-    "small": "/assets/images/small.png",
-    "large": "/assets/images/large.png",
-    "xlarge": "/assets/images/xlarge.png"
+    "small": "/drivers/ir_remote/assets/images/small.png",
+    "large": "/drivers/ir_remote/assets/images/large.png",
+    "xlarge": "/drivers/ir_remote/assets/images/xlarge.png"
   },
   "pair": [
     {
