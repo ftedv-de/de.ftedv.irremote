@@ -19,6 +19,7 @@
     .backup-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
     .backup-actions button { flex: 1 1 180px; }
     .backup-status { color: var(--muted); font-size: 12px; margin: 8px 0 0; }
+    .backup-json { font-family: monospace; }
     @media (max-width: 520px) { .grid { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -47,7 +48,10 @@
   <section class="panel">
     <h2 data-i18n="repair.backup_title"></h2>
     <p class="intro" data-i18n="repair.backup_hint"></p>
-    <input class="homey-form-input" id="backup-file" type="file" accept="application/json,.json">
+    <label class="homey-form-group">
+      <span class="homey-form-label" data-i18n="repair.backup_json"></span>
+      <textarea class="homey-form-textarea backup-json" id="backup-json" rows="12" spellcheck="false"></textarea>
+    </label>
     <div class="backup-actions">
       <button class="homey-button-secondary-full" id="export" data-i18n="repair.export"></button>
       <button class="homey-button-secondary-full" id="import" data-i18n="repair.import"></button>
@@ -73,13 +77,6 @@
       return value.charAt(0) === '['
         ? { format: 'raw', code: JSON.parse(value) }
         : { format: 'pronto', code: value };
-    }
-
-    function fileSafeName(value) {
-      return String(value || 'ir-remote')
-        .trim()
-        .replace(/[^a-zA-Z0-9._-]+/g, '-')
-        .replace(/^-+|-+$/g, '') || 'ir-remote';
     }
 
     function createAction(label, handler) {
@@ -174,12 +171,10 @@
     document.getElementById('export').onclick = async function () {
       try {
         var data = await Homey.emit('export_remote');
-        var url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
-        var link = document.createElement('a');
-        link.href = url;
-        link.download = fileSafeName(data.remote && data.remote.name ? data.remote.name : remoteName) + '.json';
-        link.click();
-        URL.revokeObjectURL(url);
+        var field = document.getElementById('backup-json');
+        field.value = JSON.stringify(data, null, 2);
+        field.focus();
+        field.select();
         document.getElementById('backup-status').textContent = Homey.__('repair.exported');
       } catch (error) {
         await Homey.alert(error.message || error, 'error');
@@ -187,16 +182,16 @@
     };
 
     document.getElementById('import').onclick = async function () {
-      var file = document.getElementById('backup-file').files[0];
-      if (!file) {
-        await Homey.alert(Homey.__('repair.select_file'), 'warning');
+      var json = document.getElementById('backup-json').value.trim();
+      if (!json) {
+        await Homey.alert(Homey.__('repair.enter_backup'), 'warning');
         return;
       }
       if (!await Homey.confirm(Homey.__('repair.confirm_import'), 'warning')) return;
 
       try {
         Homey.showLoadingOverlay();
-        var remote = await Homey.emit('import_remote', JSON.parse(await file.text()));
+        var remote = await Homey.emit('import_remote', JSON.parse(json));
         remoteName = remote.name;
         Homey.setTitle(remote.name);
         render(remote.buttons);
