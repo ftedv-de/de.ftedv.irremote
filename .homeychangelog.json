@@ -1,5 +1,6 @@
 {
   "1.0.0": {
-    "en": "First version!"
+    "en": "First public release with virtual remotes, ESPHome/MQTT button learning, Homey Bridge routing, Flow support and per-remote JSON backups.",
+    "de": "Erste öffentliche Version mit virtuellen Fernbedienungen, ESPHome/MQTT-Anlernen, Homey-Bridge-Routing, Flow-Unterstützung und JSON-Sicherungen pro Fernbedienung."
   }
 }
