@@ -8,8 +8,10 @@
   "scripts": {
     "generate:ir-codebooks": "node scripts/generate-ir-codebooks.js",
     "homey:validate": "homey app validate",
+    "homey:validate:publish": "homey app validate --level publish",
     "homey:build": "homey app build",
     "homey:run": "homey app run --remote",
+    "homey:publish": "npm test && npm run lint && npm run homey:validate:publish && homey app publish",
     "lint": "eslint --ext .js,.ts --ignore-path .gitignore .",
     "test": "node --test"
   },
