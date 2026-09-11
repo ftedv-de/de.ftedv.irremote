@@ -54,8 +54,12 @@ function addPending(service, requestId, overrides = {}) {
     ...overrides,
   });
   return {
-    get resolvedValue() { return resolvedValue; },
-    get rejectedError() { return rejectedError; },
+    get resolvedValue() {
+      return resolvedValue;
+    },
+    get rejectedError() {
+      return rejectedError;
+    },
   };
 }
 
