@@ -9,6 +9,8 @@
   "include": [
     "*.js",
     "drivers/**/*.js",
-    "lib/**/*.js"
+    "lib/**/*.js",
+    "scripts/**/*.js",
+    "test/**/*.js"
   ]
 }
