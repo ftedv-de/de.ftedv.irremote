@@ -2,16 +2,12 @@
   "pair": {
     "create_title": "Fernbedienung erstellen",
     "name": "Name",
-    "create": "Fernbedienung erstellen",
-    "import_title": "Sicherung importieren",
-    "import": "Alle Fernbedienungen importieren",
-    "select_file": "Bitte zuerst eine JSON-Datei auswählen.",
-    "imported": "__count__ Fernbedienungen wurden importiert."
+    "create": "Fernbedienung erstellen"
   },
   "settings": {
     "title": "IR-Fernbedienungswerkstatt",
     "subtitle": "Tasten verwalten, Codes über ESPHome anlernen und als portable Sicherung speichern.",
-    "global_subtitle": "ESPHome für das IR-Anlernen konfigurieren und alle Fernbedienungen exportieren. Dynamische IR-Befehle werden über die für das Gerät ausgewählte Homey Bridge gesendet.",
+    "global_subtitle": "ESPHome für das IR-Anlernen konfigurieren und Diagnosefunktionen verwalten. Dynamische IR-Befehle werden über die für das Gerät ausgewählte Homey Bridge gesendet.",
     "mqtt_title": "ESPHome-MQTT-Verbindung",
     "username": "Benutzername",
     "password": "Passwort",
@@ -25,7 +21,7 @@
     "ir_word_test_run": "IR-Wortindex 1023 testen",
     "ir_word_test_success": "Testframe gesendet: Wortindex __index__ aus __count__ Wörtern.",
     "remotes": "Fernbedienungen",
-    "add_remote_hint": "Fernbedienungen unter Geräte > Gerät hinzufügen > IR-Fernbedienung anlegen oder importieren.",
+    "add_remote_hint": "Fernbedienungen unter Geräte > Gerät hinzufügen > IR-Fernbedienung anlegen.",
     "no_remotes": "Es wurden noch keine IR-Fernbedienungen angelegt.",
     "button_name": "Tastenname",
     "button_type": "Tastentyp",
@@ -37,17 +33,22 @@
     "test": "Testen",
     "delete": "Löschen",
     "confirm_delete": "Diese Taste löschen?",
-    "code": "ProntoHex oder Raw-JSON-Array",
-    "backup": "Sicherung",
-    "export": "Alle Fernbedienungen exportieren",
-    "import_hint": "Die JSON-Datei kann beim Hinzufügen eines neuen IR-Fernbedienungsgeräts importiert werden."
+    "code": "ProntoHex oder Raw-JSON-Array"
   },
   "repair": {
     "subtitle": "Tasten dieser Fernbedienung hinzufügen, bearbeiten, anlernen, testen oder löschen.",
     "no_buttons": "Diese Fernbedienung besitzt noch keine Tasten.",
     "repetitions": "Wiederholungen",
     "close": "Fertig",
-    "transmitter_notice": "Gelernte ProntoHex-/Raw-Codes werden in ein statisches Timing-Codebook umgesetzt. Dadurch kann Homey sie dynamisch über die für diese Fernbedienung ausgewählte Homey Bridge senden."
+    "transmitter_notice": "Gelernte ProntoHex-/Raw-Codes werden in ein statisches Timing-Codebook umgesetzt. Dadurch kann Homey sie dynamisch über die für diese Fernbedienung ausgewählte Homey Bridge senden.",
+    "backup_title": "Sicherung dieser Fernbedienung",
+    "backup_hint": "Export und Import betreffen ausschließlich diese Fernbedienung. Beim Import werden Name und sämtliche Tasten dieser Fernbedienung durch den Inhalt der Sicherung ersetzt; Geräte-ID und Bridge-Zuordnung bleiben erhalten.",
+    "export": "Diese Fernbedienung exportieren",
+    "import": "Sicherung in diese Fernbedienung importieren",
+    "select_file": "Bitte zuerst eine JSON-Sicherungsdatei auswählen.",
+    "confirm_import": "Die aktuelle Konfiguration dieser Fernbedienung vollständig durch die ausgewählte Sicherung ersetzen?",
+    "exported": "Sicherung dieser Fernbedienung wurde erstellt.",
+    "imported": "Sicherung wurde in diese Fernbedienung importiert."
   },
   "types": {
     "custom": "Benutzerdefiniert",
