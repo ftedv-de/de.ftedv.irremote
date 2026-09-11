@@ -7,17 +7,30 @@
   "platforms": [
     "local"
   ],
+  "brandColor": "#D64A2F",
   "name": {
-    "en": "IR Remote",
-    "de": "IR-Fernbedienung"
+    "en": "Universal Remote",
+    "de": "Universal Remote"
   },
   "description": {
-    "en": "Create, learn, control and back up your IR remotes",
-    "de": "IR-Fernbedienungen erstellen, anlernen, steuern und sichern"
+    "en": "Turn everyday remotes into flexible virtual controls",
+    "de": "Macht klassische Fernbedienungen zu flexiblen virtuellen Steuerungen"
   },
-  "category": [
-    "tools"
-  ],
+  "category": "tools",
+  "tags": {
+    "en": [
+      "remote control",
+      "television",
+      "audio",
+      "automation"
+    ],
+    "de": [
+      "Fernbedienung",
+      "Fernseher",
+      "Audio",
+      "Automation"
+    ]
+  },
   "permissions": [
     "homey:wireless:ir"
   ],
@@ -61,10 +74,6 @@
     "setDebug": {
       "method": "PUT",
       "path": "/debug"
-    },
-    "runIrWordIndexDiagnostic": {
-      "method": "POST",
-      "path": "/debug/ir-word-index"
     }
   },
   "images": {
@@ -75,5 +84,10 @@
   "author": {
     "name": "Florian Trück",
     "email": "ftrueck@gmail.com"
-  }
+  },
+  "source": "https://github.com/ftedv-de/de.ftedv.irremote",
+  "bugs": {
+    "url": "https://github.com/ftedv-de/de.ftedv.irremote/issues"
+  },
+  "support": "https://github.com/ftedv-de/de.ftedv.irremote/issues"
 }
