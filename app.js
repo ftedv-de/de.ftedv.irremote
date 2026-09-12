@@ -6,6 +6,7 @@ const MqttService = require('./lib/MqttService');
 const IrCodeConverter = require('./lib/IrCodeConverter');
 const IrCodebookEncoder = require('./lib/IrCodebookEncoder');
 const IrSequence = require('./lib/IrSequence');
+const IrSequenceCompiler = require('./lib/IrSequenceCompiler');
 
 module.exports = class IRRemoteApp extends Homey.App {
 
@@ -57,6 +58,19 @@ module.exports = class IRRemoteApp extends Homey.App {
 
     const normalized = IrSequence.normalize(code);
     if (IrSequence.isSequence(normalized)) {
+      const compiled = IrSequenceCompiler.compile(normalized);
+      if (compiled) {
+        this.debugLog(
+          `IR TX sequence compiled into one frame: frames=${normalized.frames.length}, `
+          + `repetitions=${repetitions}`,
+        );
+        return this.sendSingleIR(compiled, repetitions, device);
+      }
+
+      this.debugLog(
+        `IR TX sequence cannot be represented as one frame; `
+        + `falling back to ${normalized.frames.length} transmissions`,
+      );
       for (let repetition = 0; repetition < repetitions; repetition += 1) {
         for (const frame of normalized.frames) {
           await this.sendSingleIR(frame.code, 1, device);
