@@ -1,6 +1,6 @@
 {
   "id": "de.ftedv.irremote",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "compatibility": ">=12.4.0",
   "sdk": 3,
   "runtime": "nodejs",
@@ -57,7 +57,7 @@
     "large": "/assets/images/large.png",
     "xlarge": "/assets/images/xlarge.png"
   },
- "author": {
+  "author": {
     "name": "Florian Trück",
     "email": "ftrueck@gmail.com"
   },
