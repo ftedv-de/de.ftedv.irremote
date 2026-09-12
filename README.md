@@ -8,9 +8,13 @@ Homey cannot route arbitrary runtime ProntoHex directly through a Bridge. Univer
 
 The production codebooks use a 32 x 32 Cartesian timing matrix (1024 words) with logarithmically distributed durations from 5 to 32767 microseconds. Carrier profiles are available every 2 kHz from 30 to 58 kHz and the nearest profile is selected automatically.
 
+A button may contain either one legacy ProntoHex/raw frame or a timed sequence of multiple frames. Sequence frames are transmitted in order through the same Homey device so Bridge/satellite routing remains unchanged.
+
 ## Learning
 
-Learning uses MQTT topics shared with an ESPHome receiver. Homey collects multiple captures and prefers a stable consensus instead of blindly storing the first frame. ProntoHex and raw timing arrays can also be entered manually, so the learning gateway is optional when a compatible code is already known.
+Learning uses MQTT topics shared with an ESPHome receiver. Homey collects five complete button presses rather than treating every decoded Pronto message as a separate attempt. Frames received within one press are grouped into a sequence; corresponding frame positions from repeated presses are compared using the timing consensus logic. This preserves multi-frame commands such as a full command followed by repeat frames without requiring protocol-specific decoding.
+
+ProntoHex and raw timing arrays can also be entered manually, so the learning gateway is optional when a compatible code is already known. In the Repair editor, put one frame per line and use `@delay <ms>` after a frame when a multi-frame sequence needs an explicit pause.
 
 See `docs/esphome-mqtt.md` for the MQTT protocol and the example ESPHome firmware in `esp8285_firmware/`.
 
