@@ -35,15 +35,15 @@ globals:
     restore_value: no
     initial_value: '""'
 
-  - id: ir_learn_capture_count
+  - id: ir_learn_frame_count
     type: int
     restore_value: no
     initial_value: '0'
 
-  - id: ir_learn_max_captures
+  - id: ir_learn_max_frames
     type: int
     restore_value: no
-    initial_value: '5'
+    initial_value: '100'
 
 mqtt:
   id: mqtt_client
@@ -62,21 +62,21 @@ mqtt:
             }
 
             id(ir_learn_request_id) = x["requestId"].as<std::string>();
-            id(ir_learn_capture_count) = 0;
-            id(ir_learn_max_captures) = 5;
+            id(ir_learn_frame_count) = 0;
+            id(ir_learn_max_frames) = 100;
 
-            if (x["maxCaptures"].is<int>()) {
-              const int requested = x["maxCaptures"].as<int>();
-              if (requested >= 1 && requested <= 10) {
-                id(ir_learn_max_captures) = requested;
+            if (x["maxFrames"].is<int>()) {
+              const int requested = x["maxFrames"].as<int>();
+              if (requested >= 1 && requested <= 250) {
+                id(ir_learn_max_frames) = requested;
               }
             }
 
             ESP_LOGI(
               "ir_learn",
-              "Learning started, requestId=%s, maxCaptures=%d",
+              "Learning started, requestId=%s, maxFrames=%d",
               id(ir_learn_request_id).c_str(),
-              id(ir_learn_max_captures)
+              id(ir_learn_max_frames)
             );
 
     - topic: homey/ir/learn/stop
@@ -94,12 +94,12 @@ mqtt:
 
             ESP_LOGI(
               "ir_learn",
-              "Learning stopped by Homey, requestId=%s, captures=%d",
+              "Learning stopped by Homey, requestId=%s, frames=%d",
               id(ir_learn_request_id).c_str(),
-              id(ir_learn_capture_count)
+              id(ir_learn_frame_count)
             );
             id(ir_learn_request_id).clear();
-            id(ir_learn_capture_count) = 0;
+            id(ir_learn_frame_count) = 0;
 
 remote_receiver:
   id: ir_receiver
@@ -116,7 +116,7 @@ remote_receiver:
           condition:
             lambda: |-
               return !id(ir_learn_request_id).empty()
-                && id(ir_learn_capture_count) < id(ir_learn_max_captures);
+                && id(ir_learn_frame_count) < id(ir_learn_max_frames);
 
           then:
             - mqtt.publish_json:
@@ -127,28 +127,29 @@ remote_receiver:
                   root["requestId"] = id(ir_learn_request_id);
                   root["format"] = "pronto";
                   root["code"] = x.data;
-                  root["captureIndex"] = id(ir_learn_capture_count) + 1;
-                  root["maxCaptures"] = id(ir_learn_max_captures);
+                  root["captureIndex"] = id(ir_learn_frame_count) + 1;
+                  root["receivedAtMs"] = millis();
+                  root["maxFrames"] = id(ir_learn_max_frames);
 
             - lambda: |-
-                id(ir_learn_capture_count) += 1;
+                id(ir_learn_frame_count) += 1;
 
                 ESP_LOGI(
                   "ir_learn",
-                  "Published Pronto capture %d/%d for requestId=%s",
-                  id(ir_learn_capture_count),
-                  id(ir_learn_max_captures),
+                  "Published Pronto frame %d/%d for requestId=%s",
+                  id(ir_learn_frame_count),
+                  id(ir_learn_max_frames),
                   id(ir_learn_request_id).c_str()
                 );
 
-                if (id(ir_learn_capture_count) >= id(ir_learn_max_captures)) {
-                  ESP_LOGI(
+                if (id(ir_learn_frame_count) >= id(ir_learn_max_frames)) {
+                  ESP_LOGW(
                     "ir_learn",
-                    "Learning capture limit reached, requestId=%s",
+                    "Learning frame safety limit reached, requestId=%s",
                     id(ir_learn_request_id).c_str()
                   );
                   id(ir_learn_request_id).clear();
-                  id(ir_learn_capture_count) = 0;
+                  id(ir_learn_frame_count) = 0;
                 }
 
 remote_transmitter:
