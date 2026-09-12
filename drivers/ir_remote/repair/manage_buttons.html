@@ -76,12 +76,54 @@
       }).join('');
     }
 
-    function codeFromInput(value) {
-      value = value.trim();
-      if (!value) return null;
+    function singleCodeFromInput(value) {
       return value.charAt(0) === '['
         ? { format: 'raw', code: JSON.parse(value) }
         : { format: 'pronto', code: value };
+    }
+
+    function codeFromInput(value) {
+      var lines = value.split(/\r?\n/).map(function (line) {
+        return line.trim();
+      }).filter(function (line) {
+        return line && line.charAt(0) !== '#';
+      });
+      if (!lines.length) return null;
+
+      var frames = [];
+      lines.forEach(function (line) {
+        if (line.toLowerCase().indexOf('@delay ') === 0) {
+          if (!frames.length) throw new Error('@delay requires a preceding IR frame');
+          var delay = Number(line.slice(7).trim());
+          if (!Number.isFinite(delay) || delay < 0 || delay > 5000) {
+            throw new Error('Delay must be between 0 and 5000 ms');
+          }
+          frames[frames.length - 1].delayAfterMs = Math.round(delay);
+          return;
+        }
+        frames.push({
+          code: singleCodeFromInput(line),
+          delayAfterMs: 0,
+        });
+      });
+
+      if (frames.length === 1 && frames[0].delayAfterMs === 0) return frames[0].code;
+      return { format: 'sequence', frames: frames };
+    }
+
+    function singleCodeToInput(code) {
+      return code.format === 'raw' ? JSON.stringify(code.code) : code.code;
+    }
+
+    function codeToInput(code) {
+      if (!code) return '';
+      if (code.format !== 'sequence') return singleCodeToInput(code);
+      var lines = [];
+      code.frames.forEach(function (frame) {
+        lines.push(singleCodeToInput(frame.code));
+        if (frame.delayAfterMs > 0) lines.push('@delay ' + frame.delayAfterMs);
+      });
+      return lines.join('\n');
     }
 
     function createAction(label, handler) {
@@ -117,15 +159,13 @@
           + '<label class="homey-form-group"><span class="homey-form-label">' + Homey.__('settings.button_type') + '</span><select class="homey-form-select type">' + optionList(button.type) + '</select></label>'
           + '<label class="homey-form-group"><span class="homey-form-label">' + Homey.__('repair.repetitions') + '</span><input class="homey-form-input repetitions" type="number" min="1" max="20"></label>'
           + '</div>'
-          + '<label class="homey-form-group code-editor"><span class="homey-form-label">' + Homey.__('settings.code') + '</span><textarea class="homey-form-textarea code" rows="3"></textarea></label>'
+          + '<label class="homey-form-group code-editor"><span class="homey-form-label">' + Homey.__('settings.code') + '</span><textarea class="homey-form-textarea code" rows="5"></textarea></label>'
           + '<div class="state ' + (button.code ? 'learned' : 'missing') + '">' + Homey.__(button.code ? 'settings.learned' : 'settings.not_learned') + '</div>'
           + '<div class="actions"></div>';
 
         row.querySelector('.name').value = button.name;
         row.querySelector('.repetitions').value = button.repetitions || 1;
-        row.querySelector('.code').value = button.code
-          ? (button.code.format === 'raw' ? JSON.stringify(button.code.code) : button.code.code)
-          : '';
+        row.querySelector('.code').value = codeToInput(button.code);
 
         var actions = row.querySelector('.actions');
         actions.appendChild(createAction(Homey.__('settings.save'), async function () {
