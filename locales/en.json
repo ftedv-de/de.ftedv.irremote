@@ -25,18 +25,18 @@
     "learned": "Code available",
     "not_learned": "No code",
     "learn": "Learn",
-    "press_remote": "Point the remote at the ESPHome receiver and briefly press the same button several times. Homey compares up to 5 captures and accepts the code as soon as 3 match closely enough. Learning waits up to 30 seconds.",
+    "press_remote": "Point the remote at the ESPHome receiver and briefly press and release the same button 5 times. Homey collects all IR frames from each press and compares the complete sequences. Pause briefly between presses. Learning waits up to 30 seconds.",
     "test": "Test",
     "delete": "Delete",
     "confirm_delete": "Delete this button?",
-    "code": "ProntoHex or raw JSON array"
+    "code": "IR sequence: one ProntoHex/raw frame per line, optional @delay <ms>"
   },
   "repair": {
     "subtitle": "Add, edit, learn, test or delete the buttons of this remote.",
     "no_buttons": "This remote has no buttons yet.",
     "repetitions": "Repeats",
     "close": "Finish",
-    "transmitter_notice": "Learned ProntoHex/raw codes are mapped into a static timing codebook. This lets Homey send them dynamically through the Homey Bridge selected for this remote.",
+    "transmitter_notice": "Learned ProntoHex/raw frames are mapped into a static timing codebook. Multi-frame button codes are stored as a timed sequence and sent through the Homey Bridge selected for this remote.",
     "backup_title": "Backup this remote",
     "backup_hint": "Export and import use the same JSON field and apply only to this remote. Import replaces this remote's name and all buttons from the field; the Homey device ID and Bridge assignment stay unchanged.",
     "backup_json": "Backup JSON",
