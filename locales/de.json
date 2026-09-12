@@ -25,18 +25,18 @@
     "learned": "Code vorhanden",
     "not_learned": "Kein Code",
     "learn": "Anlernen",
-    "press_remote": "Fernbedienung auf den ESPHome-Empfänger richten und dieselbe Taste mehrmals kurz drücken. Homey vergleicht bis zu 5 Empfänge und übernimmt den Code, sobald 3 ausreichend übereinstimmen. Das Anlernen wartet bis zu 30 Sekunden.",
+    "press_remote": "Fernbedienung auf den ESPHome-Empfänger richten und dieselbe Taste 5-mal kurz drücken und jeweils wieder loslassen. Homey sammelt dabei alle IR-Frames eines Tastendrucks und vergleicht die vollständigen Sequenzen. Zwischen zwei Tastendrücken kurz warten. Das Anlernen wartet bis zu 30 Sekunden.",
     "test": "Testen",
     "delete": "Löschen",
     "confirm_delete": "Diese Taste löschen?",
-    "code": "ProntoHex oder Raw-JSON-Array"
+    "code": "IR-Sequenz: ein ProntoHex-/Raw-Frame pro Zeile, optional @delay <ms>"
   },
   "repair": {
     "subtitle": "Tasten dieser Fernbedienung hinzufügen, bearbeiten, anlernen, testen oder löschen.",
     "no_buttons": "Diese Fernbedienung besitzt noch keine Tasten.",
     "repetitions": "Wiederholungen",
     "close": "Fertig",
-    "transmitter_notice": "Gelernte ProntoHex-/Raw-Codes werden in ein statisches Timing-Codebook umgesetzt. Dadurch kann Homey sie dynamisch über die für diese Fernbedienung ausgewählte Homey Bridge senden.",
+    "transmitter_notice": "Gelernte ProntoHex-/Raw-Frames werden in ein statisches Timing-Codebook umgesetzt. Mehrteilige Tastencodes werden als zeitliche Sequenz gespeichert und über die für diese Fernbedienung ausgewählte Homey Bridge gesendet.",
     "backup_title": "Sicherung dieser Fernbedienung",
     "backup_hint": "Export und Import verwenden dasselbe JSON-Feld und betreffen ausschließlich diese Fernbedienung. Beim Import werden Name und sämtliche Tasten dieser Fernbedienung durch den Inhalt des Feldes ersetzt; Geräte-ID und Bridge-Zuordnung bleiben erhalten.",
     "backup_json": "Backup-JSON",
