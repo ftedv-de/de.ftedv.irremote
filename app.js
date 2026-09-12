@@ -68,7 +68,7 @@ module.exports = class IRRemoteApp extends Homey.App {
       }
 
       this.debugLog(
-        `IR TX sequence cannot be represented as one frame; `
+        'IR TX sequence cannot be represented as one frame; '
         + `falling back to ${normalized.frames.length} transmissions`,
       );
       for (let repetition = 0; repetition < repetitions; repetition += 1) {
@@ -114,7 +114,9 @@ module.exports = class IRRemoteApp extends Homey.App {
   }
 
   delay(ms) {
-    return new Promise((resolve) => this.homey.setTimeout(resolve, ms));
+    return new Promise((resolve) => {
+      this.homey.setTimeout(resolve, ms);
+    });
   }
 
   rawToProntoHex(raw, carrier) {
