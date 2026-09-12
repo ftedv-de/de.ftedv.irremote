@@ -57,13 +57,20 @@
     "large": "/assets/images/large.png",
     "xlarge": "/assets/images/xlarge.png"
   },
-  "author": {
+ "author": {
     "name": "Florian Trück",
     "email": "ftrueck@gmail.com"
   },
-  "source": "https://github.com/ftedv-de/de.ftedv.irremote",
-  "bugs": {
-    "url": "https://github.com/ftedv-de/de.ftedv.irremote/issues"
-  },
-  "support": "https://github.com/ftedv-de/de.ftedv.irremote/issues"
+  "support": "https://community.homey.app/t/app-pro-universal-remote/159406",
+  "homeyCommunityTopicId": 159406,
+  "contributing": {
+    "donate": {
+      "paypal": {
+        "username": "ftrueck"
+      },
+      "patreon": {
+        "username": "ftrueck"
+      }
+    }
+  }
 }
