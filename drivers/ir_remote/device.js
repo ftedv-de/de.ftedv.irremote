@@ -1,6 +1,7 @@
 'use strict';
 
 const Homey = require('homey');
+const IrSequence = require('../../lib/IrSequence');
 
 module.exports = class IRRemoteDevice extends Homey.Device {
 
@@ -15,12 +16,7 @@ module.exports = class IRRemoteDevice extends Homey.Device {
   cloneButtons(buttons) {
     return buttons.map((button) => ({
       ...button,
-      code: button.code
-        ? {
-          ...button.code,
-          code: Array.isArray(button.code.code) ? [...button.code.code] : button.code.code,
-        }
-        : null,
+      code: button.code ? IrSequence.clone(button.code) : null,
     }));
   }
 
