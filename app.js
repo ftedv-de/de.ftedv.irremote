@@ -5,6 +5,7 @@ const { randomUUID } = require('crypto');
 const MqttService = require('./lib/MqttService');
 const IrCodeConverter = require('./lib/IrCodeConverter');
 const IrCodebookEncoder = require('./lib/IrCodebookEncoder');
+const IrSequence = require('./lib/IrSequence');
 
 module.exports = class IRRemoteApp extends Homey.App {
 
@@ -54,6 +55,21 @@ module.exports = class IRRemoteApp extends Homey.App {
   async sendIR(code, repetitions = 1, device) {
     if (!device) throw new Error('A Homey device is required for IR satellite routing');
 
+    const normalized = IrSequence.normalize(code);
+    if (IrSequence.isSequence(normalized)) {
+      for (let repetition = 0; repetition < repetitions; repetition += 1) {
+        for (const frame of normalized.frames) {
+          await this.sendSingleIR(frame.code, 1, device);
+          if (frame.delayAfterMs > 0) await this.delay(frame.delayAfterMs);
+        }
+      }
+      return true;
+    }
+
+    return this.sendSingleIR(normalized, repetitions, device);
+  }
+
+  async sendSingleIR(code, repetitions, device) {
     const normalizedCode = IrCodeConverter.normalizeCode(code);
     const raw = IrCodeConverter.codeToRaw(normalizedCode);
     const encoded = this.irEncoder.encode(raw, repetitions);
@@ -81,6 +97,10 @@ module.exports = class IRRemoteApp extends Homey.App {
       this.error(`IR TX failed: ${message}`);
       throw error;
     }
+  }
+
+  delay(ms) {
+    return new Promise((resolve) => this.homey.setTimeout(resolve, ms));
   }
 
   rawToProntoHex(raw, carrier) {
@@ -112,7 +132,7 @@ module.exports = class IRRemoteApp extends Homey.App {
       }
 
       let code = null;
-      if (button.code) code = IrCodeConverter.normalizeCode(button.code);
+      if (button.code) code = IrSequence.normalize(button.code);
       return {
         id: typeof button.id === 'string' && button.id ? button.id : randomUUID(),
         name: button.name.trim().slice(0, 80),
