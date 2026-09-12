@@ -7,8 +7,10 @@ const IrSignalEncoder = require('../lib/IrSignalEncoder');
 const IrCodebookEncoder = require('../lib/IrCodebookEncoder');
 const {
   CARRIER_BUCKETS,
+  MARK_TIMING_LEVELS,
   MAX_RELATIVE_TIMING_ERROR,
-  TIMING_LEVELS,
+  MAX_SPACE_TIMING_US,
+  SPACE_TIMING_LEVELS,
   buildWords,
   signalIdForCarrier,
 } = require('../lib/IrCodebook');
@@ -51,12 +53,13 @@ test('legacy encoder still converts the proven ON ProntoHex frame', () => {
   assert.equal(frame.length, 34);
 });
 
-test('generic codebook contains a full 32 by 32 timing matrix', () => {
+test('generic codebook contains a full 32 by 32 mark/space matrix', () => {
   const words = buildWords();
-  assert.equal(TIMING_LEVELS.length, 32);
+  assert.equal(MARK_TIMING_LEVELS.length, 32);
+  assert.equal(SPACE_TIMING_LEVELS.length, 32);
   assert.equal(words.length, 1024);
   assert.deepEqual(words[0], [5, 5]);
-  assert.deepEqual(words.at(-1), [32767, 32767]);
+  assert.deepEqual(words.at(-1), [32767, 50000]);
 });
 
 test('generated carrier profiles exactly match the runtime codebook', () => {
@@ -93,7 +96,17 @@ test('carrier selection uses the nearest 2 kHz profile', () => {
   assert.equal(encoded.signalId, 'dynamic_codebook_56000');
 });
 
-test('terminal spaces above Homey timing limit are safely clamped', () => {
+test('sequence-sized spaces around 39 ms are representable', () => {
+  const encoded = codebookEncoder.encode({
+    carrier: 38000,
+    intro: [9000, 4500, 560, 39000, 9000, 2250, 560, 10000],
+    repeat: [],
+  });
+  assert.equal(encoded.frame.length, 4);
+  assert.ok(encoded.quantization.maxTimingError <= MAX_RELATIVE_TIMING_ERROR);
+});
+
+test('terminal spaces above the extended codebook limit are safely clamped', () => {
   const encoded = codebookEncoder.encode({
     carrier: 38000,
     intro: [9000, 4500, 560, 90000],
@@ -107,10 +120,10 @@ test('oversized spaces inside a frame are rejected', () => {
   assert.throws(
     () => codebookEncoder.encode({
       carrier: 38000,
-      intro: [560, 90000, 560, 560],
+      intro: [560, MAX_SPACE_TIMING_US + 1, 560, 560],
       repeat: [],
     }),
-    /exceeds Homey's 32767 us limit inside the frame/,
+    /exceeds the 50000 us codebook limit inside the frame/,
   );
 });
 
