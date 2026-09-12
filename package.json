@@ -7,12 +7,17 @@
   },
   "scripts": {
     "generate:ir-codebooks": "node scripts/generate-ir-codebooks.js",
+    "prehomey:validate": "npm run generate:ir-codebooks",
     "homey:validate": "homey app validate",
+    "prehomey:validate:publish": "npm run generate:ir-codebooks",
     "homey:validate:publish": "homey app validate --level publish",
+    "prehomey:build": "npm run generate:ir-codebooks",
     "homey:build": "homey app build",
+    "prehomey:run": "npm run generate:ir-codebooks",
     "homey:run": "homey app run --remote",
     "homey:publish": "npm test && npm run lint && npm run homey:validate:publish && homey app publish",
     "lint": "eslint --ext .js,.ts --ignore-path .gitignore .",
+    "pretest": "npm run generate:ir-codebooks",
     "test": "node --test"
   },
   "dependencies": {
