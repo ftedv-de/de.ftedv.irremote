@@ -21,7 +21,7 @@ module.exports = class IRRemoteDevice extends Homey.Device {
       if (!output.mqttSendTopic) {
         throw new Error(this.homey.__('device.settings.mqtt_topic_required'));
       }
-      if (/[+#\0]/.test(output.mqttSendTopic)) {
+      if (/[+#]/.test(output.mqttSendTopic)) {
         throw new Error(this.homey.__('device.settings.mqtt_topic_invalid'));
       }
     }
