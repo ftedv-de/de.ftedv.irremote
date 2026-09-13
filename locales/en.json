@@ -7,7 +7,7 @@
   "device": {
     "settings": {
       "mqtt_topic_required": "An MQTT send topic is required for ESPHome output.",
-      "mqtt_topic_invalid": "The MQTT send topic must not contain wildcards (+ or #) or a NUL character."
+      "mqtt_topic_invalid": "The MQTT send topic must not contain wildcards (+ or #)."
     }
   },
   "settings": {
