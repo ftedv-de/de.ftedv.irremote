@@ -4,6 +4,7 @@
     "de": "Erste öffentliche Version mit virtuellen Fernbedienungen, ESPHome/MQTT-Anlernen, Homey-Bridge-Routing, Flow-Unterstützung und JSON-Sicherungen pro Fernbedienung."
   },
   "1.1.0": {
-    "en": "Improved IR code handling. Added multi sequence handling for IR code. Better handling of e.g. NEC codes with delay detection."
+    "en": "Improved multi-frame IR sequence handling with learned delays and added optional ESPHome/MQTT IR transmission per virtual remote.",
+    "de": "Verbesserte Verarbeitung mehrteiliger IR-Sequenzen mit gelernten Pausen sowie optionale IR-Ausgabe über ESPHome/MQTT pro virtueller Fernbedienung."
   }
 }
