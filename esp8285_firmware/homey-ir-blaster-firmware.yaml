@@ -108,7 +108,7 @@ mqtt:
       qos: 1
       then:
         - lambda: |-
-            if (!x["carrier"].is<int>() || !x["timings"].is<JsonArray>()) {
+            if (!x["carrier"].is<int>() || !x["timings"].is<JsonArrayConst>()) {
               ESP_LOGW("ir_send", "Invalid send request: carrier/timings missing");
               return;
             }
@@ -123,7 +123,7 @@ mqtt:
               return;
             }
 
-            JsonArray timings = x["timings"].as<JsonArray>();
+            JsonArrayConst timings = x["timings"].as<JsonArrayConst>();
             if (timings.size() < 2 || (timings.size() % 2) != 0) {
               ESP_LOGW("ir_send", "Invalid raw timing count: %u", timings.size());
               return;
@@ -135,7 +135,7 @@ mqtt:
             data->reserve(timings.size());
 
             size_t index = 0;
-            for (JsonVariant timing_value : timings) {
+            for (JsonVariantConst timing_value : timings) {
               if (!timing_value.is<int>()) {
                 ESP_LOGW("ir_send", "Invalid timing at index %u", index);
                 return;
