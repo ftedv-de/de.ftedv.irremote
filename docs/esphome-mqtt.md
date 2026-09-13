@@ -1,6 +1,6 @@
 # ESPHome MQTT gateway
 
-Homey Pro and Homey Bridge do not provide an IR receiver to third-party apps. This app therefore delegates learning to an ESPHome node with an IR receiver. Learned timings are mapped into Homey regular-signal codebooks for transmission through the Homey Bridge selected for the virtual remote.
+Homey Pro and Homey Bridge do not provide an IR receiver to third-party apps. This app therefore delegates learning to an ESPHome node with an IR receiver. A virtual remote can transmit either through Homey/the selected Homey Bridge or through an ESPHome IR blaster over MQTT.
 
 ## Default topics
 
@@ -9,8 +9,37 @@ Homey Pro and Homey Bridge do not provide an IR receiver to third-party apps. Th
 | Homey to ESPHome | `homey/ir/learn` | `{"requestId":"<uuid>","maxPresses":5,"requiredMatches":3,"maxFrames":100}` |
 | Homey to ESPHome | `homey/ir/learn/stop` | `{"requestId":"<uuid>"}` |
 | ESPHome to Homey | `homey/ir/received` | One decoded IR frame with matching `requestId`, `captureIndex` and `receivedAtMs` |
+| Homey to ESPHome | `homey/ir/send` | Raw signed timings, carrier frequency and repetition count |
 
-The broker URL and credentials are configurable in the app. The default learning topics are part of the gateway protocol.
+The broker URL and credentials are configurable in the app. The learning topics are part of the gateway protocol. The send topic is configured per virtual remote and must match the `ir_send_topic` substitution in the target ESPHome firmware. This makes it possible to address multiple IR blasters with different MQTT topics.
+
+## ESPHome transmission
+
+Set the virtual remote's **IR output** Advanced Setting to **ESPHome (MQTT)** and enter its **MQTT send topic**. Homey validates that a non-empty publish topic without MQTT wildcards is present before the settings can be saved.
+
+Homey normalizes the stored ProntoHex/raw code and publishes a carrier plus signed raw timings. Positive values are marks and negative values are spaces. Multi-frame button sequences using the same carrier are combined before publishing: the learned `delayAfterMs` is added directly to the preceding terminal space. This avoids MQTT scheduling latency between the frames and preserves the learned inter-frame timing.
+
+Example payload:
+
+```json
+{
+  "version": 1,
+  "carrier": 38000,
+  "repetitions": 1,
+  "timings": [9000, -4500, 560, -560, 560, -39000, 9000, -2250, 560, -10000]
+}
+```
+
+The reference firmware validates the carrier, repetitions, timing count and mark/space polarity before passing the raw waveform to ESPHome's `remote_transmitter`. Sequences whose frames use different carrier frequencies are currently rejected for ESPHome output instead of being split into separate MQTT transmissions, because splitting them would lose deterministic inter-frame timing.
+
+The firmware defaults to:
+
+```yaml
+substitutions:
+  ir_send_topic: "homey/ir/send"
+```
+
+Use a unique topic for each physical blaster when more than one ESPHome sender is deployed.
 
 ## Button press sequence learning
 
@@ -57,4 +86,4 @@ ProntoHex:
 
 Raw timings may be signed as ESPHome emits them; the converter uses their absolute mark/space durations. Raw signals default to 38000 Hz when no carrier is supplied and accept carriers in the app-supported 30000-58000 Hz range.
 
-The reference ESPHome firmware is stored in `esp8285_firmware/homey-ir-blaster-firmware.yaml`. Sequence learning requires the current firmware because older firmware stops after five decoded frames instead of streaming a complete set of button presses.
+The reference ESPHome firmware is stored in `esp8285_firmware/homey-ir-blaster-firmware.yaml`. Sequence learning and MQTT transmission require the current firmware.
