@@ -4,6 +4,12 @@
     "name": "Name",
     "create": "Fernbedienung erstellen"
   },
+  "device": {
+    "settings": {
+      "mqtt_topic_required": "Für ESPHome muss ein MQTT-Sende-Topic eingetragen werden.",
+      "mqtt_topic_invalid": "Das MQTT-Sende-Topic darf keine Platzhalter (+ oder #) und kein NUL-Zeichen enthalten."
+    }
+  },
   "settings": {
     "title": "Universal Remote",
     "subtitle": "Tasten verwalten, Codes über ESPHome anlernen und als portable Sicherung speichern.",
