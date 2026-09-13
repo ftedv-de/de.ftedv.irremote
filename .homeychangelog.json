@@ -6,5 +6,8 @@
   "1.1.0": {
     "en": "Improved multi-frame IR sequence handling with learned delays and added optional ESPHome/MQTT IR transmission per virtual remote.",
     "de": "Verbesserte Verarbeitung mehrteiliger IR-Sequenzen mit gelernten Pausen sowie optionale IR-Ausgabe über ESPHome/MQTT pro virtueller Fernbedienung."
+  },
+  "1.2.0": {
+    "en": "Added ability to send IR via ESPHome IR Blaster"
   }
 }
