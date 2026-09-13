@@ -1,7 +1,10 @@
+substitutions:
+  ir_send_topic: "homey/ir/send"
+
 esphome:
   name: homey-ir-blaster
   friendly_name: homey-ir-blaster
-  comment: "Homey IR Blaster for learning remotes"
+  comment: "Homey IR Blaster for learning and sending remotes"
   name_add_mac_suffix: false
 
 esp8266:
@@ -100,6 +103,67 @@ mqtt:
             );
             id(ir_learn_request_id).clear();
             id(ir_learn_frame_count) = 0;
+
+    - topic: ${ir_send_topic}
+      qos: 1
+      then:
+        - lambda: |-
+            if (!x["carrier"].is<int>() || !x["timings"].is<JsonArray>()) {
+              ESP_LOGW("ir_send", "Invalid send request: carrier/timings missing");
+              return;
+            }
+
+            const int carrier = x["carrier"].as<int>();
+            int repetitions = 1;
+            if (x["repetitions"].is<int>()) {
+              repetitions = x["repetitions"].as<int>();
+            }
+            if (carrier < 30000 || carrier > 58000 || repetitions < 1 || repetitions > 20) {
+              ESP_LOGW("ir_send", "Invalid carrier or repetitions");
+              return;
+            }
+
+            JsonArray timings = x["timings"].as<JsonArray>();
+            if (timings.size() < 2 || (timings.size() % 2) != 0) {
+              ESP_LOGW("ir_send", "Invalid raw timing count: %u", timings.size());
+              return;
+            }
+
+            auto call = id(ir_transmitter).transmit();
+            auto *data = call.get_data();
+            data->set_carrier_frequency(carrier);
+            data->reserve(timings.size());
+
+            size_t index = 0;
+            for (JsonVariant timing_value : timings) {
+              if (!timing_value.is<int>()) {
+                ESP_LOGW("ir_send", "Invalid timing at index %u", index);
+                return;
+              }
+              const int timing = timing_value.as<int>();
+              if ((index % 2 == 0 && timing <= 0) || (index % 2 == 1 && timing >= 0)) {
+                ESP_LOGW("ir_send", "Invalid timing polarity at index %u", index);
+                return;
+              }
+              if (timing > 0) {
+                data->mark(timing);
+              } else {
+                data->space(-timing);
+              }
+              index += 1;
+            }
+
+            call.set_send_times(repetitions);
+            call.set_send_wait(0);
+            call.perform();
+
+            ESP_LOGI(
+              "ir_send",
+              "IR sent: carrier=%dHz, repetitions=%d, timings=%u",
+              carrier,
+              repetitions,
+              timings.size()
+            );
 
 remote_receiver:
   id: ir_receiver
