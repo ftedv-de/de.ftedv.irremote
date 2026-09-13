@@ -3,6 +3,7 @@
 const Homey = require('homey');
 const { randomUUID } = require('crypto');
 const RemoteBackup = require('../../lib/RemoteBackup');
+const IrOutputSettings = require('../../lib/IrOutputSettings');
 
 module.exports = class IRRemoteDriver extends Homey.Driver {
 
@@ -11,6 +12,7 @@ module.exports = class IRRemoteDriver extends Homey.Driver {
       name: this.validateName(name),
       data: { id: randomUUID() },
       store: { buttons: [] },
+      settings: IrOutputSettings.toDeviceSettings(),
     }));
   }
 
@@ -24,18 +26,20 @@ module.exports = class IRRemoteDriver extends Homey.Driver {
       appId: this.homey.app.id,
       name: device.getName(),
       buttons: device.getButtons(),
+      output: device.getOutputSettings(),
     }));
 
     session.setHandler('import_remote', async (data) => {
       const remote = RemoteBackup.extractRemote(data);
       const name = this.validateName(remote.name);
       const buttons = this.homey.app.validateButtons(remote.buttons);
+      const output = IrOutputSettings.validate(remote.output);
 
-      // Restore the selected Homey device in place. Its device identity and
-      // satellite/Bridge selection remain untouched; only user-managed remote
-      // data from the backup is restored.
+      // Restore user-managed remote data in place. The Homey device identity and
+      // native satellite/Bridge assignment stay untouched.
       await device.setButtons(buttons);
       await device.setName(name);
+      await device.setSettings(IrOutputSettings.toDeviceSettings(output));
 
       return {
         name: device.getName(),
