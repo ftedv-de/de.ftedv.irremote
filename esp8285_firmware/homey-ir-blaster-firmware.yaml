@@ -1,6 +1,3 @@
-substitutions:
-  ir_send_topic: "homey/ir/send"
-
 esphome:
   name: homey-ir-blaster
   friendly_name: homey-ir-blaster
@@ -104,7 +101,7 @@ mqtt:
             id(ir_learn_request_id).clear();
             id(ir_learn_frame_count) = 0;
 
-    - topic: ${ir_send_topic}
+    - topic: !secret ir_send_topic
       qos: 1
       then:
         - lambda: |-
