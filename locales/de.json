@@ -7,7 +7,7 @@
   "device": {
     "settings": {
       "mqtt_topic_required": "Für ESPHome muss ein MQTT-Sende-Topic eingetragen werden.",
-      "mqtt_topic_invalid": "Das MQTT-Sende-Topic darf keine Platzhalter (+ oder #) und kein NUL-Zeichen enthalten."
+      "mqtt_topic_invalid": "Das MQTT-Sende-Topic darf keine Platzhalter (+ oder #) enthalten."
     }
   },
   "settings": {
