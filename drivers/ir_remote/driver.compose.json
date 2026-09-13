@@ -4,7 +4,7 @@
     "de": "Fernbedienung"
   },
   "class": "remote",
-  "connectivity": ["infrared"],
+  "connectivity": ["infrared", "lan"],
   "capabilities": [],
   "infrared": {
     "satelliteMode": true
