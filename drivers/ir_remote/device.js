@@ -2,6 +2,8 @@
 
 const Homey = require('homey');
 const IrSequence = require('../../lib/IrSequence');
+const IrOutputSettings = require('../../lib/IrOutputSettings');
+const IrEspHomeEncoder = require('../../lib/IrEspHomeEncoder');
 
 module.exports = class IRRemoteDevice extends Homey.Device {
 
@@ -11,6 +13,22 @@ module.exports = class IRRemoteDevice extends Homey.Device {
       await this.setStoreValue('buttons', []);
     }
     await this.syncButtonCapabilities();
+  }
+
+  async onSettings({ newSettings }) {
+    const output = IrOutputSettings.fromDeviceSettings(newSettings);
+    if (output.type === IrOutputSettings.OUTPUT_ESPHOME) {
+      if (!output.mqttSendTopic) {
+        throw new Error(this.homey.__('device.settings.mqtt_topic_required'));
+      }
+      if (/[+#\0]/.test(output.mqttSendTopic)) {
+        throw new Error(this.homey.__('device.settings.mqtt_topic_invalid'));
+      }
+    }
+  }
+
+  getOutputSettings() {
+    return IrOutputSettings.fromDeviceSettings(this.getSettings());
   }
 
   cloneButtons(buttons) {
@@ -36,6 +54,18 @@ module.exports = class IRRemoteDevice extends Homey.Device {
     const button = this.getButtons().find((item) => item.id === buttonId);
     if (!button) throw new Error('Button not found');
     if (!button.code) throw new Error('Button has no learned IR code');
+
+    const output = IrOutputSettings.validate(this.getOutputSettings());
+    if (output.type === IrOutputSettings.OUTPUT_ESPHOME) {
+      const payload = IrEspHomeEncoder.encode(button.code, button.repetitions || 1);
+      this.homey.app.debugLog(
+        `ESPHome IR TX: topic=${output.mqttSendTopic}, carrier=${payload.carrier}Hz, `
+        + `repetitions=${payload.repetitions}, timings=${payload.timings.length}`,
+      );
+      await this.homey.app.mqtt.publish(output.mqttSendTopic, payload);
+      return;
+    }
+
     await this.homey.app.sendIR(button.code, button.repetitions || 1, this);
   }
 
