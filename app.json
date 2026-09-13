@@ -112,7 +112,8 @@
       },
       "class": "remote",
       "connectivity": [
-        "infrared"
+        "infrared",
+        "lan"
       ],
       "capabilities": [],
       "infrared": {
@@ -133,7 +134,60 @@
           "id": "manage_buttons"
         }
       ],
-      "id": "ir_remote"
+      "id": "ir_remote",
+      "settings": [
+        {
+          "type": "group",
+          "label": {
+            "en": "IR output",
+            "de": "IR-Ausgabe"
+          },
+          "children": [
+            {
+              "id": "ir_output",
+              "type": "dropdown",
+              "value": "homey",
+              "label": {
+                "en": "Output",
+                "de": "Ausgabe"
+              },
+              "hint": {
+                "en": "Choose whether this remote sends through Homey/its selected Bridge or through an ESPHome IR blaster over MQTT.",
+                "de": "Wähle, ob diese Fernbedienung über Homey/die ausgewählte Bridge oder über einen ESPHome-IR-Blaster per MQTT sendet."
+              },
+              "values": [
+                {
+                  "id": "homey",
+                  "label": {
+                    "en": "Homey / selected Bridge",
+                    "de": "Homey / ausgewählte Bridge"
+                  }
+                },
+                {
+                  "id": "esphome",
+                  "label": {
+                    "en": "ESPHome (MQTT)",
+                    "de": "ESPHome (MQTT)"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "mqtt_send_topic",
+              "type": "text",
+              "value": "",
+              "label": {
+                "en": "MQTT send topic",
+                "de": "MQTT-Sende-Topic"
+              },
+              "hint": {
+                "en": "Required only for ESPHome output. This must match the MQTT topic configured on the ESPHome IR blaster.",
+                "de": "Nur für ESPHome erforderlich. Das Topic muss mit dem im ESPHome-IR-Blaster konfigurierten MQTT-Topic übereinstimmen."
+              }
+            }
+          ]
+        }
+      ]
     }
   ],
   "signals": {
